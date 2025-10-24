@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+requests
+jinja2
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]
+bcrypt==4.1.2
