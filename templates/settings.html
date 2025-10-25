@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - µMonitor Pro{% endblock %}
+
+{% block content %}
+<!-- Contenido Principal -->
+<main class="flex-1 p-6 lg:p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold mb-8">Global Settings</h1>
+        <form id="settings-form" class="bg-surface-1 rounded-lg border border-border-color">
+            <div class="p-8 space-y-8">
+                <!-- Sección de Alertas de Telegram -->
+                <div>
+                    <h3 class="text-lg font-semibold text-text-primary">Telegram Alerts</h3>
+                    <p class="text-sm text-text-secondary mt-1">Configure your Telegram Bot to receive notifications for offline APs.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
+                    <div>
+                        <label for="telegram_bot_token" class="block text-sm font-medium mb-2">Bot Token</label>
+                        <input type="password" id="telegram_bot_token" name="telegram_bot_token" placeholder="Enter your bot token" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label for="telegram_chat_id" class="block text-sm font-medium mb-2">Chat ID</label>
+                        <input type="text" id="telegram_chat_id" name="telegram_chat_id" placeholder="Enter your personal or group Chat ID" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+                
+                <!-- Sección de Monitoreo -->
+                <div>
+                    <h3 class="text-lg font-semibold text-text-primary">Monitoring & Dashboard</h3>
+                    <p class="text-sm text-text-secondary mt-1">Set default values for services.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
+                    <div>
+                        <label for="default_monitor_interval" class="block text-sm font-medium mb-2">Default Monitor Interval (seconds)</label>
+                        <input type="number" id="default_monitor_interval" name="default_monitor_interval" placeholder="e.g., 300" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-2">The time the monitor waits between scans.</p>
+                    </div>
+                    <div>
+                        <label for="dashboard_refresh_interval" class="block text-sm font-medium mb-2">Dashboard Refresh Interval (seconds)</label>
+                        <input type="number" id="dashboard_refresh_interval" name="dashboard_refresh_interval" placeholder="e.g., 60" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-2">How often the dashboard pages refresh data automatically.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4 items-center">
+                <span id="save-status" class="text-sm text-success hidden">Settings saved successfully!</span>
+                <button type="submit" id="save-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover flex items-center gap-2">
+                    <span id="save-spinner" class="material-symbols-outlined text-base animate-spin hidden">sync</span>
+                    Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings.js" defer></script>
+{% endblock %}
