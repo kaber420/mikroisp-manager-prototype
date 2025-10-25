@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Clients - µMonitor Pro{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+{% endblock %}
+
+{% block content %}
+<!-- Contenido Principal -->
+<main class="flex-1 p-6 lg:p-8">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <h1 class="text-4xl font-bold">Manage Clients</h1>
+        <button id="add-client-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
+            <span class="material-symbols-outlined mr-2">add</span>
+            <span>Add New Client</span>
+        </button>
+    </div>
+    
+    <!-- Filtros y Búsqueda -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div id="status-filter-buttons" class="flex gap-1 bg-surface-1 p-1 rounded-lg">
+            <button data-status="all" class="filter-button px-3 py-1 text-sm font-medium rounded-md active">All</button>
+            <button data-status="active" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Active</button>
+            <button data-status="suspended" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Suspended</button>
+        </div>
+        <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
+            <input type="text" id="search-input" placeholder="Search by name, address, phone..." class="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md focus:ring-primary focus:border-primary">
+        </div>
+    </div>
+
+    <!-- Tabla de Clientes -->
+    <div class="bg-surface-1 rounded-lg border border-border-color">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-2">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Address</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Phone Number</th>
+                        <th class="px-6 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">Assigned CPEs</th>
+                        <th class="px-6 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="client-table-body" class="divide-y divide-border-color">
+                    <!-- Las filas de los clientes se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Modal para Añadir/Editar Cliente -->
+<div id="client-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-4xl border border-border-color my-auto">
+        <form id="client-form">
+            <input type="hidden" id="client-id" name="id">
+            
+            <div class="p-6 border-b border-border-color flex justify-between items-center">
+                <h3 id="modal-title" class="text-2xl font-bold">Add New Client</h3>
+                <button type="button" id="cancel-client-button-x" class="text-text-secondary hover:text-text-primary">&times;</button>
+            </div>
+            
+            <div class="p-8 max-h-[70vh] overflow-y-auto space-y-8">
+                <!-- Sección de Información Personal -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="client-name" class="block text-sm font-medium mb-1">Full Name</label>
+                        <input type="text" id="client-name" name="name" required class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="client-email" class="block text-sm font-medium mb-1">Email Address</label>
+                        <input type="email" id="client-email" name="email" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="client-phone_number" class="block text-sm font-medium mb-1">Primary Phone</label>
+                        <input type="tel" id="client-phone_number" name="phone_number" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="client-whatsapp_number" class="block text-sm font-medium mb-1">WhatsApp Number</label>
+                        <input type="tel" id="client-whatsapp_number" name="whatsapp_number" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="client-address" class="block text-sm font-medium mb-1">Address</label>
+                        <input type="text" id="client-address" name="address" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                </div>
+
+                <!-- Sección de Servicio y Facturación -->
+                <div class="border-t border-border-color pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="client-service_status" class="block text-sm font-medium mb-1">Service Status</label>
+                        <select id="client-service_status" name="service_status" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="client-suspension_method" class="block text-sm font-medium mb-1">Suspension Method</label>
+                        <select id="client-suspension_method" name="suspension_method" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <option value="">(Not Set)</option>
+                            <option value="ubiquiti_mac_block">Ubiquiti MAC Block</option>
+                            <option value="mikrotik_firewall">MikroTik Firewall</option>
+                            <option value="mikrotik_queue">MikroTik Simple Queue</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="client-billing_day" class="block text-sm font-medium mb-1">Billing Day of Month</label>
+                        <input type="number" id="client-billing_day" name="billing_day" min="1" max="31" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                </div>
+
+                <!-- Sección de CPEs Asignados -->
+                <div id="assigned-cpes-section" class="border-t border-border-color pt-6 hidden">
+                    <h4 class="text-md font-semibold text-text-primary mb-4">Assigned CPEs</h4>
+                    <div id="assigned-cpes-list" class="space-y-3 mb-4">
+                        <!-- CPEs asignados se insertarán aquí -->
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <select id="unassigned-cpe-select" class="flex-grow bg-background border border-border-color rounded-md p-2"></select>
+                        <button type="button" id="assign-cpe-button" class="px-4 py-2 text-sm font-semibold rounded-md bg-primary/20 text-primary hover:bg-primary/30">Assign CPE</button>
+                    </div>
+                </div>
+
+                 <!-- Sección de Notas -->
+                 <div class="border-t border-border-color pt-6">
+                    <label for="client-notes" class="block text-sm font-medium mb-1">Notes / Installation Details</label>
+                    <textarea id="client-notes" name="notes" rows="4" class="w-full bg-background border border-border-color rounded-md p-2"></textarea>
+                </div>
+
+                <div id="client-form-error" class="text-danger text-sm hidden"></div>
+            </div>
+            
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-between items-center">
+                <div>
+                     <button type="button" id="suspend-service-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-warning hover:bg-yellow-600 disabled:opacity-50" disabled>Suspend Service (Future)</button>
+                </div>
+                <div class="flex gap-4">
+                    <button type="button" id="cancel-client-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
+                    <button type="submit" id="save-client-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Client</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/clients.js" defer></script>
+{% endblock %}

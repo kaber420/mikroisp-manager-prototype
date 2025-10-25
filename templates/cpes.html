@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Manage CPEs - µMonitor Pro{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+{% endblock %}
+
+{% block content %}
+<!-- Contenido Principal -->
+<main class="flex-1 p-6 lg:p-8">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-4xl font-bold">Network CPEs</h1>
+        <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
+            <input type="text" id="search-input" placeholder="Search by name, IP, or MAC..." class="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md focus:ring-primary focus:border-primary">
+        </div>
+    </div>
+
+    <!-- Tabla de CPEs -->
+    <div class="bg-surface-1 rounded-lg border border-border-color">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-2">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">CPE Hostname</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Connected to AP</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Signal</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">MAC Address</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody id="cpe-table-body" class="divide-y divide-border-color">
+                    <!-- Las filas de los CPEs se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+{# El siguiente paso será crear este archivo #}
+<script src="/static/js/cpes.js" defer></script>
+{% endblock %}

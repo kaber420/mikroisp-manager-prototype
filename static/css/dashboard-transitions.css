@@ -1,0 +1,88 @@
+/* 
+  Regla consolidada para transiciones suaves en las secciones principales de ambas páginas.
+  Asegura que cualquier cambio en 'filter' u 'opacity' hecho por JavaScript sea animado.
+*/
+#ap-table-body,
+#top-airtime-list,
+#top-signal-list,
+#device-info-card,
+#charts-card,
+#client-list-section {
+    transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: filter, opacity; /* Ayuda al rendimiento */
+    transform: translateZ(0); /* Promueve la aceleración por hardware */
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Transiciones suaves para los números de estadísticas del dashboard */
+#total-aps,
+#aps-online,
+#aps-offline,
+#total-clients {
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
+}
+
+/* --- ESTILOS ESPECÍFICOS DE LA TABLA DEL DASHBOARD --- */
+
+/* Transiciones suaves para las filas de la tabla */
+#ap-table-body tr {
+    transition: background-color 0.2s ease;
+}
+
+/* Efecto hover mejorado */
+#ap-table-body tr:hover {
+    background-color: var(--surface-2, rgba(255, 255, 255, 0.05));
+}
+
+/* Mejora la visualización de los badges de estado */
+#ap-table-body .size-2 {
+    transition: transform 0.2s ease;
+}
+
+#ap-table-body tr:hover .size-2 {
+    transform: scale(1.2);
+}
+
+
+/* --- ESTILOS GENERALES Y MEJORAS --- */
+
+/* Suaviza el cambio de contenido en las tarjetas de resumen */
+#summary-cards > div {
+    transition: transform 0.2s ease;
+}
+
+#summary-cards > div:hover {
+    transform: translateY(-2px);
+}
+
+/* Mejora la transición del input de búsqueda */
+#search-input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Asegura que el contenido de la tabla esté bien posicionado */
+.overflow-x-auto {
+    position: relative;
+}
+
+/* Mejora la legibilidad de las fuentes */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+  Las reglas para .updating, @keyframes gentlePulse,
+  y otras animaciones de carga inicial han sido eliminadas
+  porque el nuevo método de manipulación directa de estilos
+  no las requiere.
+*/
