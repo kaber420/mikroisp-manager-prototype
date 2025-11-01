@@ -123,6 +123,26 @@ def _setup_inventory_db():
     )
     """)
     
+    # --- INICIO DE NUEVO BLOQUE: Tabla de Routers MikroTik ---
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS routers (
+        host TEXT PRIMARY KEY,
+        api_port INTEGER DEFAULT 8728,    -- Puerto para API (inicialmente 8728 sin SSL)
+        api_ssl_port INTEGER DEFAULT 8729, -- Puerto para API-SSL (después de aprovisionar)
+        username TEXT NOT NULL,           -- Inicia como 'admin', luego se actualiza a 'api-user'
+        password TEXT NOT NULL,           -- Inicia como pass de 'admin', luego se actualiza
+        zona_id INTEGER,
+        is_enabled BOOLEAN DEFAULT TRUE,
+        hostname TEXT,
+        model TEXT,
+        firmware TEXT,
+        last_status TEXT,
+        last_checked DATETIME,
+        FOREIGN KEY (zona_id) REFERENCES zonas (id) ON DELETE SET NULL
+    )
+    """)
+    # --- FIN DE NUEVO BLOQUE ---
+    
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_aps_zona ON aps (zona_id);")
     # --- CAMBIO 3: Actualizado el nombre del índice para la nueva tabla 'cpes' y eliminado el obsoleto ---
     cursor.execute("DROP INDEX IF EXISTS idx_clients_ip;")

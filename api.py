@@ -24,6 +24,10 @@ from auth import (
     create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_password_hash
 )
 
+# --- INICIO DE NUEVO BLOQUE: Importar el router de MikroTik ---
+from routers_api import router as routers_api_router
+# --- FIN DE NUEVO BLOQUE ---
+
 
 # --- Modelos de Datos (Pydantic) ---
 class Zona(BaseModel):
@@ -350,6 +354,13 @@ async def read_clients_page(request: Request, current_user: User = Depends(get_c
     if isinstance(current_user, RedirectResponse): return current_user
     return templates.TemplateResponse("clients.html", {"request": request, "active_page": "clients"})
 
+# --- INICIO DE NUEVO BLOQUE: Endpoint para la página de Routers ---
+@app.get("/routers", response_class=HTMLResponse, tags=["Dashboard"])
+async def read_routers_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
+    if isinstance(current_user, RedirectResponse): return current_user
+    return templates.TemplateResponse("routers.html", {"request": request, "active_page": "routers"})
+# --- FIN DE NUEVO BLOQUE ---
+
 
 # --- Endpoint para el modo "Live" / Diagnóstico (AHORA PROTEGIDO) ---
 @app.get("/api/aps/{host}/live", response_model=APLiveDetail, tags=["APs"])
@@ -592,6 +603,13 @@ def delete_zona(zona_id: int, conn: sqlite3.Connection = Depends(get_inventory_d
     cursor_check = conn.execute("SELECT 1 FROM aps WHERE zona_id = ?", (zona_id,))
     if cursor_check.fetchone():
         raise HTTPException(status_code=400, detail="No se puede eliminar la zona porque contiene APs.")
+    
+    # --- INICIO DE MODIFICACIÓN: Chequear routers antes de borrar zona ---
+    cursor_check_routers = conn.execute("SELECT 1 FROM routers WHERE zona_id = ?", (zona_id,))
+    if cursor_check_routers.fetchone():
+        raise HTTPException(status_code=400, detail="No se puede eliminar la zona porque contiene Routers.")
+    # --- FIN DE MODIFICACIÓN ---
+
     cursor_delete = conn.execute("DELETE FROM zonas WHERE id = ?", (zona_id,))
     conn.commit()
     if cursor_delete.rowcount == 0:
@@ -812,3 +830,7 @@ def get_ap_history(host: str, period: str = "24h",
     cursor = stats_conn.execute(query, (host, start_time))
     rows = cursor.fetchall()
     return {"host": host, "hostname": ap_info['hostname'] if ap_info else host, "history": [dict(row) for row in rows]}
+
+# --- INICIO DE NUEVO BLOQUE: Incluir el router de MikroTik ---
+app.include_router(routers_api_router, prefix="/api", tags=["Routers"])
+# --- FIN DE NUEVO BLOQUE ---
