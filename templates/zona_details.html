@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Zone - µMonitor Pro{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+<style>
+    .tab-button.active { border-bottom-color: #3B82F6; color: #F1F5F9; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 p-6 lg:p-8">
+    <div class="mb-6"><a href="/zonas" class="text-primary hover:underline">Manage Zones</a><span class="mx-2 text-text-secondary">/</span><span id="breadcrumb-zonaname">Loading...</span></div>
+    <h1 id="main-zonaname" class="text-4xl font-bold mb-8">Loading Zone...</h1>
+
+    <div class="border-b border-border-color flex mb-6">
+        <button type="button" data-tab="general" class="tab-button active py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">General Info</button>
+        <button type="button" data-tab="infra" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Infrastructure</button>
+        <button type="button" data-tab="docs" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Documentation</button>
+        <button type="button" data-tab="notes" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Notes & Diagrams</button>
+    </div>
+
+    <!-- Pestaña 1: Información General -->
+    <div id="tab-general" class="tab-panel active">
+        <form id="form-general" class="bg-surface-1 rounded-lg border border-border-color">
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="zona-nombre" class="block text-sm font-medium mb-1">Zone Name</label>
+                        <input type="text" id="zona-nombre" name="nombre" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="zona-coordenadas" class="block text-sm font-medium mb-1">GPS Coordinates</label>
+                        <input type="text" id="zona-coordenadas" name="coordenadas_gps" placeholder="e.g., 40.7128, -74.0060" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                </div>
+                <div>
+                    <label for="zona-direccion" class="block text-sm font-medium mb-1">Address / Location</label>
+                    <textarea id="zona-direccion" name="direccion" rows="3" class="w-full bg-background border border-border-color rounded-md p-2"></textarea>
+                </div>
+            </div>
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save General Info</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Pestaña 2: Infraestructura -->
+    <div id="tab-infra" class="tab-panel">
+        <form id="form-infra" class="bg-surface-1 rounded-lg border border-border-color">
+            <div class="p-8 space-y-6">
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="infra-ip" class="block text-sm font-medium mb-1">Management IP</label>
+                        <input type="text" id="infra-ip" name="direccion_ip_gestion" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="infra-gateway" class="block text-sm font-medium mb-1">Gateway</label>
+                        <input type="text" id="infra-gateway" name="gateway_predeterminado" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div>
+                        <label for="infra-dns" class="block text-sm font-medium mb-1">DNS Servers</label>
+                        <input type="text" id="infra-dns" name="servidores_dns" placeholder="8.8.8.8, 1.1.1.1" class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                </div>
+                <div>
+                    <label for="infra-vlans" class="block text-sm font-medium mb-1">Used VLANs</label>
+                    <input type="text" id="infra-vlans" name="vlans_utilizadas" placeholder="10 (Mgmt), 20 (Clients), 30 (VoIP)" class="w-full bg-background border border-border-color rounded-md p-2">
+                </div>
+                <div>
+                    <label for="infra-equipos" class="block text-sm font-medium mb-1">Critical Equipment</label>
+                    <textarea id="infra-equipos" name="equipos_criticos" rows="4" class="w-full bg-background border border-border-color rounded-md p-2"></textarea>
+                </div>
+                <div>
+                    <label for="infra-mantenimiento" class="block text-sm font-medium mb-1">Next Scheduled Maintenance</label>
+                    <input type="date" id="infra-mantenimiento" name="proximo_mantenimiento" class="w-full bg-background border border-border-color rounded-md p-2">
+                </div>
+            </div>
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Infrastructure Data</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Pestaña 3: Documentación -->
+    <div id="tab-docs" class="tab-panel">
+        <div class="bg-surface-1 rounded-lg border border-border-color">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold mb-4">Upload New Document</h3>
+                <form id="form-docs" class="space-y-4">
+                    <input type="file" id="doc-file" name="file" required class="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30">
+                    <input type="text" id="doc-descripcion" name="descripcion" placeholder="Optional description..." class="w-full bg-background border border-border-color rounded-md p-2">
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Upload File</button>
+                </form>
+            </div>
+            <div id="document-gallery" class="p-6 border-t border-border-color">
+                <p class="text-text-secondary">Loading documents...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña 4: Notas y Diagramas -->
+    <div id="tab-notes" class="tab-panel">
+        <div class="bg-surface-1 rounded-lg border border-border-color p-6">
+            <h3 class="text-lg font-semibold mb-4">Notes (Markdown & Diagrams)</h3>
+            <div id="notes-editor-container">
+                <p class="text-text-secondary">Editor will be implemented in Phase 2.</p>
+            </div>
+            <h3 class="text-lg font-semibold mt-8 mb-4">Sensitive Notes (Encrypted)</h3>
+             <div id="sensitive-notes-container">
+                <p class="text-text-secondary">Sensitive notes editor will be implemented in Phase 2.</p>
+            </div>
+        </div>
+    </div>
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/zona_details.js" defer></script>
+{% endblock %}
