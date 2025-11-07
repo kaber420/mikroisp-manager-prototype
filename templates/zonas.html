@@ -3,7 +3,6 @@
 {% block title %}Manage Zones - µMonitor Pro{% endblock %}
 
 {% block content %}
-<!-- Contenido Principal -->
 <main class="flex-1 p-6 lg:p-8">
     <div class="max-w-4xl mx-auto">
         <div class="flex items-center justify-between mb-8">
@@ -11,12 +10,10 @@
             <button id="add-zone-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover"><span class="material-symbols-outlined mr-2">add</span><span>Add New Zone</span></button>
         </div>
         <div id="zone-list-container" class="bg-surface-1 rounded-lg border border-border-color">
-            <!-- Las filas de las zonas se insertarán aquí dinámicamente -->
-        </div>
+            </div>
     </div>
 </main>
 
-<!-- Modal para Añadir/Editar Zona -->
 <div id="zone-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
     <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-md border border-border-color">
         <form id="zone-form">
@@ -26,8 +23,9 @@
                 <div>
                     <label for="zone-name" class="block text-sm font-medium mb-1">Zone Name</label>
                     <input type="text" id="zone-name" name="nombre" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    <span id="zone-name-error" class="form-error hidden mt-1"></span>
                 </div>
-                <div id="zone-form-error" class="text-danger text-sm hidden"></div>
+                <div id="zone-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
             </div>
             <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
                 <button type="button" id="cancel-zone-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
@@ -39,5 +37,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/utils/validators.js"></script>
+<script src="/static/js/utils/form-utils.js"></script>
+
 <script src="/static/js/zonas.js" defer></script>
 {% endblock %}

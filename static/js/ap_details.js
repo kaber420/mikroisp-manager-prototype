@@ -4,8 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let charts = {};
     let isStopping = false;
 
-    let backgroundRefreshIntervalId = null; 
-    let refreshIntervalMs = 60000; 
+    let backgroundRefreshIntervalId = null;
+    let refreshIntervalMs = 60000;
 
     const deviceInfoCard = document.getElementById('device-info-card');
     const chartsCard = document.getElementById('charts-card');
@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${(kbps / 1000).toFixed(1)} Mbps`;
     }
 
-    // --- CAMBIO: Renombrado para consistencia ---
     function getCPEHealthStatus(cpe) {
         if (cpe.eth_plugged === false) return { colorClass: 'border-danger', label: 'Cable Unplugged', icon: 'power_off' };
         if (cpe.eth_speed != null && cpe.eth_speed < 100) return { colorClass: 'border-orange', label: `${cpe.eth_speed} Mbps Link`, icon: 'warning' };
@@ -95,16 +94,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const chart = charts[chartId];
             if (!chart) return;
             chart.data.labels.push(timestamp);
-            if (chartId === 'clientsChart') { chart.data.datasets[0].data.push(apData.client_count); }
-            else if (chartId === 'airtimeChart') { const airtime = apData.airtime_total_usage != null ? (apData.airtime_total_usage / 10.0) : null; chart.data.datasets[0].data.push(airtime); }
-            else if (chartId === 'throughputChart') { chart.data.datasets[0].data.push(apData.total_throughput_rx); chart.data.datasets[1].data.push(apData.total_throughput_tx); }
-            if (chart.data.labels.length > 30) { chart.data.labels.shift(); chart.data.datasets.forEach(dataset => dataset.data.shift()); }
+            if (chart.data.labels.length > 30) { chart.data.labels.shift(); }
+            
+            if (chartId === 'clientsChart') { 
+                chart.data.datasets[0].data.push(apData.client_count);
+                if (chart.data.datasets[0].data.length > 30) { chart.data.datasets[0].data.shift(); }
+            } else if (chartId === 'airtimeChart') { 
+                const airtime = apData.airtime_total_usage != null ? (apData.airtime_total_usage / 10.0) : null;
+                chart.data.datasets[0].data.push(airtime); 
+                if (chart.data.datasets[0].data.length > 30) { chart.data.datasets[0].data.shift(); }
+            } else if (chartId === 'throughputChart') { 
+                chart.data.datasets[0].data.push(apData.total_throughput_rx);
+                chart.data.datasets[1].data.push(apData.total_throughput_tx);
+                if (chart.data.datasets[0].data.length > 30) { chart.data.datasets[0].data.shift(); }
+                if (chart.data.datasets[1].data.length > 30) { chart.data.datasets[1].data.shift(); }
+            }
             chart.update('quiet');
         });
     }
 
     function updatePageWithLiveData(ap) {
-        document.getElementById('detail-status').innerHTML = `<div class="flex items-center gap-2 font-semibold text-orange"><div class="size-2 rounded-full bg-orange"></div><span>Live</span></div>`;
+        document.getElementById('detail-status').innerHTML = `<div class="flex items-center gap-2 font-semibold text-orange animate-pulse"><div class="size-2 rounded-full bg-orange"></div><span>Live</span></div>`;
         document.getElementById('detail-clients').textContent = ap.client_count != null ? ap.client_count : 'N/A';
         document.getElementById('detail-noise').textContent = ap.noise_floor != null ? `${ap.noise_floor} dBm` : 'N/A';
         const airtimeTotal = ap.airtime_total_usage != null ? `${(ap.airtime_total_usage / 10.0).toFixed(1)}%` : 'N/A';
@@ -113,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('detail-airtime').textContent = `${airtimeTotal} (Tx: ${airtimeTx} / Rx: ${airtimeRx})`;
         document.getElementById('detail-throughput').textContent = `${formatThroughput(ap.total_throughput_rx)} / ${formatThroughput(ap.total_throughput_tx)}`;
         document.getElementById('detail-total-data').textContent = `${formatBytes(ap.total_rx_bytes)} / ${formatBytes(ap.total_tx_bytes)}`;
-        renderCPEList(ap.clients);
+        renderCPEList(ap.clients, ap.clients);
         updateChartsWithLiveData(ap);
     }
 
@@ -129,6 +139,99 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function renderCPEList(historicalCPEs, liveCPEs = null) {
+        const cpeListDiv = document.getElementById('client-list');
+        if (!historicalCPEs || historicalCPEs.length === 0) {
+            cpeListDiv.innerHTML = '<p class="text-text-secondary col-span-full text-center py-8">No CPE data available for this AP.</p>';
+            return;
+        }
+    
+        cpeListDiv.innerHTML = '';
+        
+        const liveMacs = new Set(liveCPEs ? liveCPEs.map(cpe => cpe.cpe_mac) : []);
+
+        const timeFormatter = new Intl.DateTimeFormat(navigator.language, {
+            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        });
+    
+        historicalCPEs.forEach(cpe => {
+            const card = document.createElement('div');
+            const isOnline = liveMacs.has(cpe.cpe_mac);
+            
+            const displayCPE = isOnline ? liveCPEs.find(lc => lc.cpe_mac === cpe.cpe_mac) : cpe;
+    
+            let health = getCPEHealthStatus(displayCPE);
+            let cardClasses = 'bg-surface-1 rounded-lg border-l-4 p-4 flex flex-col gap-3 transition-all hover:shadow-lg';
+            
+            if (!isOnline) {
+                health = { colorClass: 'border-text-secondary', label: 'Offline', icon: 'signal_cellular_off' };
+                cardClasses += ' opacity-50';
+            }
+            
+            card.className = `${cardClasses} ${health.colorClass}`;
+    
+            const t_rx = displayCPE.throughput_rx_kbps != null ? `${displayCPE.throughput_rx_kbps.toFixed(1)}` : 'N/A';
+            const t_tx = displayCPE.throughput_tx_kbps != null ? `${displayCPE.throughput_tx_kbps.toFixed(1)}` : 'N/A';
+            const chains = displayCPE.signal_chain0 != null && displayCPE.signal_chain1 != null ? `(${displayCPE.signal_chain0}/${displayCPE.signal_chain1})` : '';
+            const c_dl = displayCPE.dl_capacity ? (displayCPE.dl_capacity / 1000).toFixed(0) : 'N/A';
+            const c_ul = displayCPE.ul_capacity ? (displayCPE.ul_capacity / 1000).toFixed(0) : 'N/A';
+            const cableStatus = displayCPE.eth_speed != null ? `${displayCPE.eth_speed} Mbps` : 'N/A';
+            
+            const lastSeenDate = new Date(cpe.timestamp);
+            const lastSeenHtml = !isOnline 
+                ? `<span>Last seen:</span><span class="font-semibold text-text-secondary text-right">${timeFormatter.format(lastSeenDate)}</span>`
+                : `<span>Cable Status:</span><span class="font-semibold text-text-primary text-right">${cableStatus}</span>`;
+    
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-text-primary">${displayCPE.cpe_hostname || 'Unnamed Device'}</p>
+                        <p class="text-xs text-text-secondary font-mono">${displayCPE.ip_address || 'No IP'}</p>
+                    </div>
+                    <div class="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-black bg-opacity-20">
+                        <span class="material-symbols-outlined text-xs">${health.icon}</span>
+                        <span>${health.label}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-text-secondary">
+                    <span>Signal / Chains:</span><span class="font-semibold text-text-primary text-right">${displayCPE.signal || 'N/A'} dBm ${chains}</span>
+                    <span>Noise Floor:</span><span class="font-semibold text-text-primary text-right">${displayCPE.noisefloor || 'N/A'} dBm</span>
+                    <span>Capacity (DL/UL):</span><span class="font-semibold text-text-primary text-right">${c_dl} / ${c_ul} Mbps</span>
+                    <span>Throughput (DL/UL):</span><span class="font-semibold text-text-primary text-right">${t_rx} / ${t_tx} kbps</span>
+                    <span>Total Data (DL/UL):</span><span class="font-semibold text-text-primary text-right">${formatBytes(displayCPE.total_rx_bytes)} / ${formatBytes(displayCPE.total_tx_bytes)}</span>
+                    ${lastSeenHtml}
+                </div>
+            `;
+            cpeListDiv.appendChild(card);
+        });
+    }
+
+    async function loadCPEDataFromHistory() {
+        try {
+            const [historyResponse, liveResponse] = await Promise.all([
+                fetch(`${API_BASE_URL}/api/aps/${encodeURIComponent(currentHost)}/cpes`),
+                fetch(`${API_BASE_URL}/api/aps/${encodeURIComponent(currentHost)}/live`)
+            ]);
+    
+            if (!historyResponse.ok) throw new Error('Failed to fetch CPE history');
+            const historicalCPEs = await historyResponse.json();
+    
+            let liveCPEs = null;
+            if (liveResponse.ok) {
+                const liveData = await liveResponse.json();
+                liveCPEs = liveData.clients;
+            } else {
+                console.warn("Could not fetch live CPE data. Offline status may not be accurate.");
+            }
+    
+            renderCPEList(historicalCPEs, liveCPEs);
+    
+        } catch (error) {
+            console.error("Error loading CPE data:", error);
+            document.getElementById('client-list').innerHTML = '<p class="text-danger col-span-3">Failed to load CPE data.</p>';
+        }
+    }
+    
     async function stopDiagnosticMode() {
         isStopping = true;
         diagnosticManager.stop(true);
@@ -204,38 +307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }, 300);
     }
-
-    // --- CAMBIO: Renombrado para consistencia ---
-    function renderCPEList(cpes) {
-        const cpeListDiv = document.getElementById('client-list');
-        if (!cpes || cpes.length === 0) { cpeListDiv.innerHTML = '<p class="text-text-secondary col-span-3">No CPEs are currently connected to this AP.</p>'; return; }
-        cpeListDiv.innerHTML = '';
-        cpes.forEach(cpe => { 
-            const health = getCPEHealthStatus(cpe); 
-            const card = document.createElement('div'); 
-            card.className = `bg-surface-1 rounded-lg border-l-4 p-4 flex flex-col gap-3 transition-shadow hover:shadow-lg ${health.colorClass}`; 
-            const t_rx = cpe.throughput_rx_kbps != null ? `${cpe.throughput_rx_kbps.toFixed(1)}` : 'N/A'; 
-            const t_tx = cpe.throughput_tx_kbps != null ? `${cpe.throughput_tx_kbps.toFixed(1)}` : 'N/A'; 
-            const chains = cpe.signal_chain0 != null && cpe.signal_chain1 != null ? `(${cpe.signal_chain0}/${cpe.signal_chain1})` : ''; 
-            const c_dl = cpe.dl_capacity ? (cpe.dl_capacity / 1000).toFixed(0) : 'N/A'; 
-            const c_ul = cpe.ul_capacity ? (cpe.ul_capacity / 1000).toFixed(0) : 'N/A'; 
-            card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-text-primary">${cpe.cpe_hostname || 'Unnamed Device'}</p><p class="text-xs text-text-secondary font-mono">${cpe.ip_address || 'No IP'}</p></div><div class="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-black bg-opacity-20"><span class="material-symbols-outlined text-xs">${health.icon}</span><span>${health.label}</span></div></div><div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-text-secondary"><span>Signal / Chains:</span><span class="font-semibold text-text-primary text-right">${cpe.signal || 'N/A'} dBm ${chains}</span><span>Noise Floor:</span><span class="font-semibold text-text-primary text-right">${cpe.noisefloor || 'N/A'} dBm</span><span>Capacity (DL/UL):</span><span class="font-semibold text-text-primary text-right">${c_dl} / ${c_ul} Mbps</span><span>Throughput (DL/UL):</span><span class="font-semibold text-text-primary text-right">${t_rx} / ${t_tx} kbps</span><span>Total Data (DL/UL):</span><span class="font-semibold text-text-primary text-right">${formatBytes(cpe.total_tx_bytes)} / ${formatBytes(cpe.total_rx_bytes)}</span><span>Cable Status:</span><span class="font-semibold text-text-primary text-right">${cpe.eth_speed != null ? `${cpe.eth_speed} Mbps` : 'N/A'}</span></div>`; 
-            cpeListDiv.appendChild(card); 
-        });
-    }
-    
-    // --- CAMBIO: Renombrado para consistencia y endpoint actualizado ---
-    async function loadCPEDataFromHistory() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/aps/${encodeURIComponent(currentHost)}/cpes`);
-            if (!response.ok) throw new Error('Failed to fetch CPEs');
-            const cpes = await response.json();
-            renderCPEList(cpes);
-        } catch (error) {
-            console.error("Error loading CPE data:", error);
-            document.getElementById('client-list').innerHTML = '<p class="text-danger col-span-3">Failed to load CPE data.</p>';
-        }
-    }
     
     function loadApDetails() {
         if (deviceInfoCard) { deviceInfoCard.style.filter = 'blur(4px)'; deviceInfoCard.style.opacity = '0.6'; }
@@ -294,11 +365,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.preventDefault();
         const editApForm = document.getElementById('edit-ap-form');
         const formData = new FormData(editApForm);
-        const data = { username: formData.get('username'), zona_id: parseInt(formData.get('zona_id'), 10) };
+        const data = { 
+            username: formData.get('username'), 
+            zona_id: parseInt(formData.get('zona_id'), 10),
+            monitor_interval: parseInt(formData.get('monitor_interval'), 10) || null
+        };
         const password = formData.get('password');
         if (password) { data.password = password; }
-        const monitorInterval = formData.get('monitor_interval');
-        if (monitorInterval) { data.monitor_interval = parseInt(monitorInterval, 10); }
+        
         try {
             const response = await fetch(`${API_BASE_URL}/api/aps/${encodeURIComponent(currentHost)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error('Failed to update AP');
@@ -342,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { 
             const response = await fetch(`${API_BASE_URL}/api/zonas`); 
             const zones = await response.json(); 
-            selectElement.innerHTML = ''; 
+            selectElement.innerHTML = '<option value="">Select a zone...</option>'; 
             zones.forEach(zone => { const option = document.createElement('option'); option.value = zone.id; option.textContent = zone.nombre; if(zone.id === selectedId) { option.selected = true; } selectElement.appendChild(option); }); 
         } catch(error) { 
             console.error('Failed to load zones for modal:', error); 
@@ -350,8 +424,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // --- Initial Setup ---
-    console.log("--- DOMContentLoaded ---");
-
     document.querySelectorAll('.chart-button').forEach(button => {
         button.addEventListener('click', () => {
             document.querySelectorAll('.chart-button').forEach(btn => btn.classList.remove('active'));
@@ -387,6 +459,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         console.error("Los elementos del formulario de edición no se encontraron. La funcionalidad de edición puede fallar.");
     }
-    
-    console.log("--- Initialization Finished ---");
 });

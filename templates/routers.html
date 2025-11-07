@@ -50,38 +50,43 @@
                     <div>
                         <label for="router-host" class="block text-sm font-medium mb-1">Host (IP Address)</label>
                         <input type="text" id="router-host" name="host" required class="w-full bg-background border border-border-color rounded-md p-2">
+                        <span id="router-host-error" class="form-error hidden mt-1"></span>
                     </div>
                     <div>
                         <label for="router-zona_id" class="block text-sm font-medium mb-1">Zone</label>
                         <select id="router-zona_id" name="zona_id" required class="w-full bg-background border border-border-color rounded-md p-2"></select>
+                        <span id="router-zona_id-error" class="form-error hidden mt-1"></span>
                     </div>
                     <div>
-                        <label for="router-api_port" class="block text-sm font-medium mb-1">API Port</label>
+                        <label for="router-api_port" class="block text-sm font-medium mb-1">API Port (Inseguro)</label>
                         <input type="number" id="router-api_port" name="api_port" value="8728" required class="w-full bg-background border border-border-color rounded-md p-2">
-                        <p class="text-xs text-text-secondary mt-1">(Puerto de API 8728 Sin SSL solo usado para el aprovisionamiento inicial).</p>
+                        <p class="text-xs text-text-secondary mt-1">Puerto de API (sin SSL). Usado para el aprovisionamiento inicial.</p>
+                        <span id="router-api_port-error" class="form-error hidden mt-1"></span>
                     </div>
                 </div>
 
                 <div>
                     <h4 class="text-md font-semibold text-text-primary">Admin Credentials</h4>
-                    <p class="text-xs text-text-secondary mb-2">Credenciales de administrador (ej. 'admin') usadas para el aprovisionamiento inicial.</p>
+                    <p class="text-xs text-text-secondary mb-2">Credenciales de admin (ej. 'admin') usadas para el aprovisionamiento inicial.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                         <div>
                             <label for="router-username" class="block text-sm font-medium mb-1">Admin Username</label>
                             <input type="text" id="router-username" name="username" value="admin" required class="w-full bg-background border border-border-color rounded-md p-2">
+                            <span id="router-username-error" class="form-error hidden mt-1"></span>
                         </div>
                         <div>
                             <label for="router-password" class="block text-sm font-medium mb-1">Admin Password</label>
                             <input type="password" id="router-password" name="password" required class="w-full bg-background border border-border-color rounded-md p-2">
+                            <span id="router-password-error" class="form-error hidden mt-1"></span>
                         </div>
                     </div>
                 </div>
                 
-                <div id="router-form-error" class="text-danger text-sm hidden"></div>
+                <div id="router-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
             </div>
             
             <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
-                <button type="button" id="cancel-router-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</a`>
+                <button type="button" id="cancel-router-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
                 <button type="submit" id="save-router-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Router</button>
             </div>
         </form>
@@ -127,5 +132,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/utils/validators.js"></script>
+<script src="/static/js/utils/form-utils.js"></script>
+
 <script src="/static/js/routers.js" defer></script>
 {% endblock %}

@@ -1,3 +1,5 @@
+// static/js/routers.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = window.location.origin;
     let allRouters = [];
@@ -12,13 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const routerForm = document.getElementById('router-form');
     const cancelRouterButton = document.getElementById('cancel-router-button');
     const cancelRouterButtonX = document.getElementById('cancel-router-button-x');
-    const routerFormError = document.getElementById('router-form-error');
+    // --- ID ACTUALIZADO ---
+    const routerFormError = document.getElementById('router-form-error-main'); 
     const modalTitle = document.getElementById('modal-title');
     const routerHostInput = document.getElementById('router-host');
     const routerHostEditInput = document.getElementById('router-host-edit');
     const routerZoneSelect = document.getElementById('router-zona_id');
 
     // --- REFERENCIAS AL DOM (Modal de Aprovisionamiento) ---
+    // (Sin cambios)
     const provisionModal = document.getElementById('provision-modal');
     const provisionForm = document.getElementById('provision-form');
     const provisionModalTitle = document.getElementById('provision-modal-title');
@@ -33,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Carga y renderiza la lista de routers.
+     * (Sin cambios)
      */
     async function loadRouters() {
         if (!tableBody) return;
@@ -61,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Renderiza la tabla de routers basada en los datos cargados.
+     * (Sin cambios)
      */
     function renderRouters() {
         if (!tableBody) return;
@@ -73,10 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         allRouters.forEach(router => {
             const row = document.createElement('tr');
-            row.className = "hover:bg-surface-2 transition-colors duration-200";
+            row.className = "hover:bg-surface-2 transition-colors duration-200 cursor-pointer";
             
             const zone = allZones.find(z => z.id === router.zona_id);
-            const status = getStatusBadge(router.last_status, router.api_port);
+            const isProvisioned = router.api_port === router.api_ssl_port; 
+            const status = getStatusBadge(router.last_status, isProvisioned);
             
             row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">${status.html}</td>
@@ -95,13 +102,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
 
-            // Añadir event listeners a los botones
+            row.onclick = () => {
+                window.location.href = `/router/${encodeURIComponent(router.host)}`;
+            };
+
             const provisionBtn = row.querySelector('.provision-btn');
             if (provisionBtn) {
-                provisionBtn.onclick = () => openProvisionModal(router);
+                provisionBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openProvisionModal(router);
+                };
             }
-            row.querySelector('.edit-btn').onclick = () => openRouterModal(router);
-            row.querySelector('.delete-btn').onclick = () => handleDeleteRouter(router.host, router.hostname);
+            row.querySelector('.edit-btn').onclick = (e) => {
+                e.stopPropagation();
+                openRouterModal(router);
+            };
+            row.querySelector('.delete-btn').onclick = (e) => {
+                e.stopPropagation();
+                handleDeleteRouter(router.host, router.hostname);
+            };
             
             tableBody.appendChild(row);
         });
@@ -109,16 +128,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Genera el badge de estado y el botón de aprovisionamiento.
+     * (Sin cambios)
      */
-    function getStatusBadge(status, apiPort) {
-        // Si el puerto es 8728, significa que no está aprovisionado.
-        if (apiPort === 8728) {
+    function getStatusBadge(status, isProvisioned) {
+        
+        if (!isProvisioned) {
             return {
                 html: `<div class="flex items-center gap-2 text-warning"><div class="size-2 rounded-full bg-warning"></div><span>Needs Provisioning</span></div>`,
                 provisionButton: `<button class="provision-btn px-2 py-1 text-xs font-semibold rounded-md bg-orange/20 text-orange hover:bg-orange/30" title="Provision Router">Provision</button>`
             };
         }
-
+        
         let html = '';
         switch (status) {
             case 'online':
@@ -130,12 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
             default:
                 html = `<div class="flex items-center gap-2 text-text-secondary"><div class="size-2 rounded-full bg-text-secondary"></div><span>Unknown</span></div>`;
         }
-
+        
         return { html, provisionButton: '' };
     }
 
     /**
      * Rellena el <select> de zonas en los modales.
+     * (Sin cambios)
      */
     function populateZoneSelect(selectElement) {
         if (!selectElement) return;
@@ -154,21 +175,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Abre el modal para añadir o editar un router.
-     * @param {object|null} router - El objeto router para editar, o null para crear.
+     * (ACTUALIZADO para usar formUtils)
      */
     function openRouterModal(router = null) {
-        routerForm.reset();
-        routerFormError.classList.add('hidden');
+        // --- INICIO DE CAMBIOS ---
+        // Limpiar el formulario y los errores usando la utilidad
+        formUtils.resetModalForm('router-modal'); 
+        // --- FIN DE CAMBIOS ---
+        
         populateZoneSelect(routerZoneSelect);
 
         if (router) { // Modo Edición
             modalTitle.textContent = 'Edit Router';
-            routerHostEditInput.value = router.host; // Guarda el host original para el PUT
+            routerHostEditInput.value = router.host; 
             routerHostInput.value = router.host;
             routerHostInput.readOnly = true;
             routerHostInput.classList.add('bg-surface-2', 'cursor-not-allowed');
 
-            // Poblar el formulario
             document.getElementById('router-zona_id').value = router.zona_id || '';
             document.getElementById('router-api_port').value = router.api_port || 8728;
             document.getElementById('router-username').value = router.username;
@@ -190,31 +213,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeRouterModal() {
         routerModal.classList.remove('is-open');
-        routerForm.reset();
+        // No es necesario resetear aquí, openRouterModal lo hace
     }
 
     /**
      * Maneja el guardado (POST o PUT) de un router.
+     * (ACTUALIZADO para usar validadores)
      */
     async function handleRouterFormSubmit(event) {
         event.preventDefault();
+        // --- INICIO DE CAMBIOS ---
+        formUtils.clearFormErrors(routerForm);
+        let isValid = true;
+
         const formData = new FormData(routerForm);
         const data = Object.fromEntries(formData.entries());
+        
+        // 1. Validar los datos
+        if (!validators.isValidIPv4(data.host)) {
+            formUtils.showFieldError('router-host', 'Debe ser una dirección IP válida (ej. 192.168.1.1)');
+            isValid = false;
+        }
+        if (!validators.isRequired(data.zona_id)) {
+            formUtils.showFieldError('router-zona_id', 'Debe seleccionar una zona.');
+            isValid = false;
+        }
+        if (!validators.isValidPort(data.api_port)) {
+            formUtils.showFieldError('router-api_port', 'Debe ser un puerto válido (1-65535).');
+            isValid = false;
+        }
+        if (!validators.isRequired(data.username)) {
+            formUtils.showFieldError('router-username', 'El usuario es requerido.');
+            isValid = false;
+        }
+        // Validar contraseña solo si es un router nuevo (required está en el HTML)
+        const isEditing = !!data.host_edit;
+        if (!isEditing && !validators.isRequired(data.password)) {
+             formUtils.showFieldError('router-password', 'La contraseña es requerida.');
+             isValid = false;
+        }
+        
+        if (!isValid) return; // Detener si hay errores
+        // --- FIN DE CAMBIOS ---
         
         // Convertir a tipos correctos
         data.zona_id = parseInt(data.zona_id, 10) || null;
         data.api_port = parseInt(data.api_port, 10) || 8728;
         
-        const isEditing = !!data.host_edit;
         const host = isEditing ? data.host_edit : data.host;
         const url = isEditing ? `${API_BASE_URL}/api/routers/${encodeURIComponent(host)}` : `${API_BASE_URL}/api/routers`;
         const method = isEditing ? 'PUT' : 'POST';
 
-        // En modo edición, no enviar la contraseña si está vacía
         if (isEditing && !data.password) {
             delete data.password;
         }
-        // No enviar el campo auxiliar
         delete data.host_edit;
 
         try {
@@ -237,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Maneja la eliminación de un router.
+     * (Sin cambios)
      */
     async function handleDeleteRouter(host, hostname) {
         const displayName = hostname || host;
@@ -256,13 +309,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Abre el modal de aprovisionamiento.
+     * (ACTUALIZADO para usar formUtils)
      */
     function openProvisionModal(router) {
-        provisionForm.reset();
+        // --- INICIO DE CAMBIOS ---
+        formUtils.resetModalForm('provision-modal');
+        // --- FIN DE CAMBIOS ---
+        
         provisionHostInput.value = router.host;
         provisionModalTitle.textContent = `Provision Router: ${router.hostname || router.host}`;
         
-        // Resetear UI de feedback
         provisionFeedback.classList.add('hidden');
         provisionErrorDetails.classList.add('hidden');
         provisionErrorDetails.textContent = '';
@@ -271,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         provisionSpinner.classList.add('animate-spin');
         provisionStatusText.classList.remove('text-success', 'text-danger');
         
-        document.getElementById('provision-new-user').value = 'api-user'; // Default
+        document.getElementById('provision-new-user').value = 'api-user'; 
         
         provisionModal.classList.add('is-open');
     }
@@ -282,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Maneja el envío del formulario de aprovisionamiento.
+     * (Sin cambios)
      */
     async function handleProvisionFormSubmit(event) {
         event.preventDefault();
@@ -323,15 +380,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const result = await response.json();
             
-            // Éxito
-            provisionStatusText.textContent = '¡Aprovisionado con éxito!';
+            provisionStatusText.textContent = '¡Aprovisionado con éxito! Redirigiendo a la gestión...';
             provisionStatusText.classList.add('text-success');
             provisionSpinner.style.display = 'none';
             
-            // Cerrar modal y recargar lista después de 2 segundos
             setTimeout(() => {
                 closeProvisionModal();
-                loadRouters();
+                window.location.href = `/router/${encodeURIComponent(host)}`;
             }, 2000);
 
         } catch (error) {

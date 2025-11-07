@@ -1,3 +1,5 @@
+// static/js/users.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = window.location.origin;
 
@@ -6,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userModal = document.getElementById('user-modal');
     const userForm = document.getElementById('user-form');
     const cancelUserButton = document.getElementById('cancel-user-button');
-    const userFormError = document.getElementById('user-form-error');
+    // --- ID ACTUALIZADO ---
+    const userFormError = document.getElementById('user-form-error-main');
     const modalTitle = document.getElementById('modal-title');
     const userListContainer = document.getElementById('user-list-container');
     
@@ -22,24 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const disabledCheckbox = document.getElementById('user-disabled');
 
 
-    // --- Funciones del Modal ---
+    // --- Funciones del Modal (ACTUALIZADAS) ---
     function openUserModal(user = null) {
         if (!userForm) return;
-        userForm.reset();
-        userFormError.classList.add('hidden');
+        // --- INICIO DE CAMBIO ---
+        formUtils.resetModalForm('user-modal');
+        // --- FIN DE CAMBIO ---
 
         if (user) { // Modo Edición
             modalTitle.textContent = 'Edit User';
             userFormMode.value = 'edit';
             usernameInput.value = user.username;
-            usernameInput.readOnly = true; // No permitir cambiar el nombre de usuario
+            usernameInput.readOnly = true; 
             usernameInput.classList.add('cursor-not-allowed', 'bg-surface-2');
             
             passwordInput.placeholder = 'Leave blank to keep current password';
             passwordInput.required = false;
             passwordHelpText.classList.add('hidden');
 
-            // Poblar el resto de los campos
             roleInput.value = user.role;
             telegramIdInput.value = user.telegram_chat_id || '';
             receiveAlertsCheckbox.checked = user.receive_alerts;
@@ -65,31 +68,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- Lógica de la API ---
+    // --- Lógica de la API (ACTUALIZADA) ---
     async function handleUserFormSubmit(event) {
         event.preventDefault();
+        
+        // --- INICIO DE CAMBIOS: VALIDACIÓN ---
+        formUtils.clearFormErrors(userForm);
+        let isValid = true;
+        
         const mode = userFormMode.value;
         const username = usernameInput.value;
+        const password = passwordInput.value;
+        const telegramId = telegramIdInput.value;
         const isEditing = mode === 'edit';
+
+        if (!isEditing) {
+            // Validar username solo al crear
+            if (!validators.isRequired(username)) {
+                formUtils.showFieldError('user-username', 'El nombre de usuario es requerido.');
+                isValid = false;
+            } else if (username.length < 3) {
+                formUtils.showFieldError('user-username', 'Debe tener al menos 3 caracteres.');
+                isValid = false;
+            }
+
+            // Validar password solo al crear
+            if (!validators.isRequired(password)) {
+                formUtils.showFieldError('user-password', 'La contraseña es requerida.');
+                isValid = false;
+            } else if (password.length < 6) {
+                formUtils.showFieldError('user-password', 'Debe tener al menos 6 caracteres.');
+                isValid = false;
+            }
+        }
+        
+        // Validar password de edición (si se escribió algo)
+        if (isEditing && validators.isRequired(password) && password.length < 6) {
+            formUtils.showFieldError('user-password', 'La nueva contraseña debe tener al menos 6 caracteres.');
+            isValid = false;
+        }
+
+        // Validar Telegram ID (si se escribió algo)
+        if (validators.isRequired(telegramId) && isNaN(parseInt(telegramId, 10))) {
+            formUtils.showFieldError('user-telegram_chat_id', 'Debe ser un ID numérico.');
+            isValid = false;
+        }
+        
+        if (!isValid) return; // Detener si hay errores
+        // --- FIN DE CAMBIOS ---
 
         const url = isEditing ? `${API_BASE_URL}/api/users/${username}` : `${API_BASE_URL}/api/users`;
         const method = isEditing ? 'PUT' : 'POST';
 
         const data = {
             role: roleInput.value,
-            telegram_chat_id: telegramIdInput.value || null,
+            telegram_chat_id: telegramId || null,
             receive_alerts: receiveAlertsCheckbox.checked,
             receive_announcements: receiveAnnouncementsCheckbox.checked,
             disabled: disabledCheckbox.checked,
         };
         
-        // Solo incluir el nombre de usuario y contraseña si estamos creando
         if (!isEditing) {
             data.username = username;
-            data.password = passwordInput.value;
-        } else if (passwordInput.value) {
-            // Incluir contraseña solo si se ha introducido una nueva en modo edición
-            data.password = passwordInput.value;
+            data.password = password;
+        } else if (password) {
+            data.password = password;
         }
         
         try {
@@ -112,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function handleDeleteUser(username) {
+        // (Sin cambios)
         if (confirm(`Are you sure you want to delete the user "${username}"?\nThis action cannot be undone.`)) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/users/${username}`, { method: 'DELETE' });
@@ -127,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadUsers() {
+        // (Sin cambios)
         if (!userListContainer) return;
         userListContainer.innerHTML = '<p class="p-8 text-center text-text-secondary">Loading users...</p>';
         

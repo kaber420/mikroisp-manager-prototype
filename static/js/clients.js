@@ -3,25 +3,61 @@ document.addEventListener('DOMContentLoaded', () => {
     let allClients = [];
     let currentFilters = { searchTerm: '', serviceStatus: 'all' };
     let refreshIntervalId = null;
+    
+    // --- NUEVA VARIABLE ---
+    // Guarda el cliente que estamos editando para que el formulario PPPoE pueda verlo
+    let currentEditingClient = null; 
 
-    // --- REFERENCIAS AL DOM ---
+    // --- REFERENCIAS AL DOM (Generales) ---
     const searchInput = document.getElementById('search-input');
     const tableBody = document.getElementById('client-table-body');
     const addClientButton = document.getElementById('add-client-button');
     const clientModal = document.getElementById('client-modal');
+    
+    // --- Pestañas del Modal ---
+    const tabBtnInfo = document.getElementById('tab-btn-info');
+    const tabBtnService = document.getElementById('tab-btn-service');
+    const tabPanelInfo = document.getElementById('tab-panel-info');
+    const tabPanelService = document.getElementById('tab-panel-service');
+    const cancelClientButtonTab2 = document.getElementById('cancel-client-button-tab2');
+
+    // --- Pestaña 1: Formulario de Cliente ---
     const clientForm = document.getElementById('client-form');
     const cancelClientButton = document.getElementById('cancel-client-button');
     const cancelClientButtonX = document.getElementById('cancel-client-button-x');
-    const clientFormError = document.getElementById('client-form-error');
+    const clientFormError = document.getElementById('client-form-error-main'); 
     const modalTitle = document.getElementById('modal-title');
     const clientIdInput = document.getElementById('client-id');
     const assignedCPEsSection = document.getElementById('assigned-cpes-section');
+    
+    // --- Pestaña 2: Formulario de Servicio PPPoE ---
+    const pppoeServiceForm = document.getElementById('pppoe-service-form');
+    const pppoeRouterSelect = document.getElementById('pppoe-router-select');
+    const pppoeProfileSelect = document.getElementById('pppoe-profile-select');
+    const pppoeUsername = document.getElementById('pppoe-username');
+    const pppoePassword = document.getElementById('pppoe-password');
+    const pppoeFormErrorMain = document.getElementById('pppoe-form-error-main');
+    const savePppoeFormBtn = document.getElementById('save-pppoe-form-btn');
+    const cancelPppoeFormBtn = document.getElementById('cancel-pppoe-form-btn');
+    const pppoeServiceStatus = document.getElementById('pppoe-service-status');
 
-    /**
-     * Devuelve la clase para un badge de estado de servicio.
-     * @param {string} status - 'active', 'suspended', o 'cancelled'.
-     * @returns {string}
-     */
+
+    // --- Lógica de Pestañas ---
+    function switchTab(tabName) {
+        if (tabName === 'info') {
+            tabBtnInfo.classList.add('active');
+            tabPanelInfo.classList.add('active');
+            tabBtnService.classList.remove('active');
+            tabPanelService.classList.remove('active');
+        } else if (tabName === 'service') {
+            tabBtnInfo.classList.remove('active');
+            tabPanelInfo.classList.remove('active');
+            tabBtnService.classList.add('active');
+            tabPanelService.classList.add('active');
+        }
+    }
+
+    // --- Lógica de Renderizado (Sin cambios) ---
     function getStatusBadgeClass(status) {
         switch (status) {
             case 'active': return 'bg-success/20 text-success';
@@ -31,20 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Renderiza la tabla de clientes basada en los filtros actuales.
-     */
     function renderClients() {
         if (!tableBody) return;
-
         let filteredClients = allClients;
-
-        // Filtrar por estado de servicio
         if (currentFilters.serviceStatus !== 'all') {
             filteredClients = filteredClients.filter(client => client.service_status === currentFilters.serviceStatus);
         }
-
-        // Filtrar por término de búsqueda
         if (currentFilters.searchTerm) {
             const term = currentFilters.searchTerm.toLowerCase();
             filteredClients = filteredClients.filter(client =>
@@ -53,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 (client.phone_number && client.phone_number.includes(term))
             );
         }
-
         tableBody.innerHTML = '';
         if (filteredClients.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-text-secondary">No clients match the current filters.</td></tr>`;
@@ -62,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 row.className = "hover:bg-surface-2 transition-colors duration-200";
                 const statusClass = getStatusBadgeClass(client.service_status);
-
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${client.service_status}</span>
@@ -87,9 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Carga todos los clientes desde la API.
-     */
     function loadAllClients() {
         if (!tableBody) return;
         tableBody.style.filter = 'blur(4px)';
@@ -97,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (allClients.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-text-secondary">Loading clients...</td></tr>';
         }
-
         setTimeout(async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/clients`);
@@ -120,18 +142,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     /**
      * Abre el modal para crear o editar un cliente.
-     * @param {object|null} client - El objeto del cliente para editar, o null para crear.
+     * (ACTUALIZADO para manejar pestañas y cargar servicios)
      */
     async function openClientModal(client = null) {
-        clientForm.reset();
-        clientFormError.classList.add('hidden');
-        assignedCPEsSection.classList.add('hidden');
-
+        formUtils.resetModalForm('client-modal');
+        formUtils.clearFormErrors(pppoeServiceForm); // Limpiar también el 2do formulario
+        pppoeServiceForm.classList.add('hidden');
+        pppoeServiceStatus.innerHTML = '<p class="text-text-secondary text-center">Loading network service details...</p>';
+        switchTab('info'); // Volver siempre a la pestaña de info
+        currentEditingClient = null; // Limpiar cliente anterior
+        
         if (client) { // Modo Edición
             modalTitle.textContent = 'Edit Client';
             clientIdInput.value = client.id;
+            currentEditingClient = client; // Guardar cliente actual
             
-            // Poblar formulario
+            // Poblar Pestaña 1
             document.getElementById('client-name').value = client.name;
             document.getElementById('client-email').value = client.email || '';
             document.getElementById('client-phone_number').value = client.phone_number || '';
@@ -142,26 +168,58 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('client-billing_day').value = client.billing_day || '';
             document.getElementById('client-notes').value = client.notes || '';
             
-            // Cargar y mostrar CPEs
+            // Activar CPEs y Pestaña de Servicio
             assignedCPEsSection.classList.remove('hidden');
+            tabBtnService.disabled = false;
             await loadAndRenderAssignedCPEs(client.id);
             await populateUnassignedCPEs();
+            
+            // Cargar datos de la Pestaña 2
+            await loadNetworkServiceDetails(client);
+
         } else { // Modo Creación
             modalTitle.textContent = 'Add New Client';
             clientIdInput.value = '';
+            assignedCPEsSection.classList.add('hidden');
+            tabBtnService.disabled = true; // No se puede añadir servicio a un cliente que no existe
         }
         clientModal.classList.add('is-open');
     }
 
     function closeClientModal() {
         if (clientModal) clientModal.classList.remove('is-open');
+        currentEditingClient = null; // Limpiar al cerrar
     }
 
     /**
-     * Maneja el envío del formulario de cliente.
+     * Maneja el envío del formulario de cliente (Pestaña 1).
+     * (Sin cambios, ya estaba validado)
      */
     async function handleClientFormSubmit(event) {
         event.preventDefault();
+        
+        formUtils.clearFormErrors(clientForm);
+        let isValid = true;
+        
+        const name = document.getElementById('client-name').value;
+        const email = document.getElementById('client-email').value;
+        const phone = document.getElementById('client-phone_number').value;
+
+        if (!validators.isRequired(name)) {
+            formUtils.showFieldError('client-name', 'El nombre es requerido.');
+            isValid = false;
+        }
+        if (validators.isRequired(email) && !validators.isValidEmail(email)) {
+            formUtils.showFieldError('client-email', 'Debe ser un email válido.');
+            isValid = false;
+        }
+        if (validators.isRequired(phone) && !validators.isValidPhone(phone)) {
+            formUtils.showFieldError('client-phone_number', 'Debe ser un teléfono válido.');
+            isValid = false;
+        }
+
+        if (!isValid) return;
+        
         const clientId = clientIdInput.value;
         const isEditing = !!clientId;
         
@@ -171,11 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(clientForm);
         const data = Object.fromEntries(formData.entries());
 
-        // Limpiar campos opcionales vacíos para que no se envíen como ""
         for (const key in data) {
-            if (data[key] === '') {
-                data[key] = null;
-            }
+            if (data[key] === '') data[key] = null;
         }
         
         try {
@@ -188,8 +243,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || `Failed to ${isEditing ? 'update' : 'create'} client`);
             }
-            closeClientModal();
-            loadAllClients(); // Recargar la lista
+            
+            const savedClient = await response.json();
+            
+            // Si estábamos creando, ahora podemos activar la pestaña de servicio
+            if (!isEditing) {
+                modalTitle.textContent = 'Edit Client';
+                clientIdInput.value = savedClient.id;
+                currentEditingClient = savedClient;
+                tabBtnService.disabled = false;
+                // Mostrar un feedback de éxito y cambiar a la pestaña de servicio
+                alert('Cliente creado. Ahora puede añadir el servicio de red.');
+                switchTab('service');
+                await loadNetworkServiceDetails(savedClient);
+            } else {
+                closeClientModal();
+            }
+            
+            loadAllClients(); // Recargar la lista de la tabla principal
         } catch (error) {
             clientFormError.textContent = `Error: ${error.message}`;
             clientFormError.classList.remove('hidden');
@@ -198,6 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Maneja la eliminación de un cliente.
+     * (Sin cambios)
      */
     async function handleDeleteClient(clientId, clientName) {
         if (confirm(`Are you sure you want to delete client "${clientName}"?\nThis will also unassign all their CPEs.`)) {
@@ -214,9 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Carga y muestra los CPEs asignados a un cliente en el modal.
-     */
+    // --- Lógica de CPE (Sin cambios) ---
     async function loadAndRenderAssignedCPEs(clientId) {
         const listDiv = document.getElementById('assigned-cpes-list');
         listDiv.innerHTML = '<p class="text-sm text-text-secondary">Loading assigned CPEs...</p>';
@@ -242,10 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
             listDiv.innerHTML = '<p class="text-sm text-danger">Could not load CPEs.</p>';
         }
     }
-
-    /**
-     * Puebla el <select> con los CPEs que no tienen dueño.
-     */
     async function populateUnassignedCPEs() {
         const select = document.getElementById('unassigned-cpe-select');
         select.innerHTML = '<option value="">Loading available CPEs...</option>';
@@ -267,10 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
             select.innerHTML = '<option value="">Error loading CPEs</option>';
         }
     }
-
-    /**
-     * Maneja el clic en el botón "Assign CPE".
-     */
     async function handleAssignCPE() {
         const select = document.getElementById('unassigned-cpe-select');
         const cpeMac = select.value;
@@ -282,17 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/cpes/${cpeMac}/assign/${clientId}`, { method: 'POST' });
             if (!response.ok) throw new Error('Failed to assign CPE');
-            // Recargar ambas listas para reflejar el cambio
             await loadAndRenderAssignedCPEs(clientId);
             await populateUnassignedCPEs();
         } catch (error) {
             alert(`Error: ${error.message}`);
         }
     }
-
-    /**
-     * Maneja el clic en el botón "Unassign".
-     */
     async function handleUnassignCPE(cpeMac, clientId) {
         if (!confirm(`Are you sure you want to unassign CPE ${cpeMac}?`)) return;
         try {
@@ -304,11 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Error: ${error.message}`);
         }
     }
-
-
-    /**
-     * Configura y arranca el refresco automático de la página.
-     */
+    
+    // --- Lógica de Auto-refresco (Sin cambios) ---
     async function initializeAutoRefresh() {
         try {
             const settingsResponse = await fetch(`${API_BASE_URL}/api/settings`);
@@ -322,6 +376,153 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Could not load settings for auto-refresh.", error);
         }
     }
+    
+    // ---
+    // --- NUEVAS FUNCIONES (Pestaña de Servicio PPPoE) ---
+    // ---
+    
+    /**
+     * Carga los detalles del servicio de red para un cliente.
+     * Por ahora, solo muestra el formulario de creación.
+     */
+    async function loadNetworkServiceDetails(client) {
+        pppoeServiceForm.classList.remove('hidden');
+        pppoeServiceStatus.innerHTML = ''; // Limpiar 'Loading...'
+        
+        // Poner un nombre de usuario PPPoE sugerido
+        pppoeUsername.value = client.name.trim().replace(/\s+/g, '.').toLowerCase();
+        
+        try {
+            // 1. Cargar Routers
+            const response = await fetch(`${API_BASE_URL}/api/routers`);
+            if (!response.ok) throw new Error('Failed to load routers');
+            const routers = await response.json();
+            
+            pppoeRouterSelect.innerHTML = '<option value="">Select a router...</option>';
+            routers.forEach(router => {
+                // Solo mostrar routers que estén aprovisionados
+                if(router.api_port === router.api_ssl_port) {
+                    const option = document.createElement('option');
+                    option.value = router.host;
+                    option.textContent = router.hostname || router.host;
+                    pppoeRouterSelect.appendChild(option);
+                }
+            });
+
+            // 2. Resetear perfiles
+            pppoeProfileSelect.innerHTML = '<option value="">Select a router first</option>';
+            pppoeProfileSelect.disabled = true;
+
+        } catch (error) {
+            pppoeServiceStatus.innerHTML = `<p class="text-danger">Error loading routers: ${error.message}</p>`;
+        }
+    }
+    
+    /**
+     * Se activa cuando el usuario selecciona un router en el formulario PPPoE.
+     * Carga los perfiles (planes) de ese router.
+     */
+    async function handleRouterSelectChange(event) {
+        const host = event.target.value;
+        pppoeProfileSelect.innerHTML = '<option value="">Loading profiles...</option>';
+        pppoeProfileSelect.disabled = true;
+
+        if (!host) {
+            pppoeProfileSelect.innerHTML = '<option value="">Select a router first</option>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/routers/${host}/read/ppp-profiles`);
+            if (!response.ok) throw new Error('Failed to load profiles');
+            const profiles = await response.json();
+            
+            // Filtrar para mostrar solo los perfiles que creamos (planes)
+            const managedProfiles = profiles.filter(p => p.comment && p.comment.includes('Managed by µMonitor'));
+
+            pppoeProfileSelect.innerHTML = '<option value="">Select a plan...</option>';
+            if (managedProfiles.length === 0) {
+                 pppoeProfileSelect.innerHTML = '<option value="" disabled>No plans found on this router</option>';
+                 return;
+            }
+
+            managedProfiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.name;
+                option.textContent = `${profile.name} (${profile.parent_queue || 'No queue'})`;
+                pppoeProfileSelect.appendChild(option);
+            });
+            pppoeProfileSelect.disabled = false;
+
+        } catch (error) {
+            pppoeProfileSelect.innerHTML = '<option value="">Error loading profiles</option>';
+            console.error(error);
+        }
+    }
+    
+    /**
+     * Maneja el envío del formulario de creación de servicio PPPoE.
+     */
+    async function handlePppoeFormSubmit(event) {
+        event.preventDefault();
+        formUtils.clearFormErrors(pppoeServiceForm);
+        let isValid = true;
+        
+        const host = pppoeRouterSelect.value;
+        const profile = pppoeProfileSelect.value;
+        const username = pppoeUsername.value;
+        const password = pppoePassword.value;
+        const clientName = currentEditingClient ? currentEditingClient.name : 'Unknown Client';
+        
+        // Validación
+        if (!validators.isRequired(host)) {
+            formUtils.showFieldError('pppoe-router-select', 'Debe seleccionar un router.');
+            isValid = false;
+        }
+        if (!validators.isRequired(profile)) {
+            formUtils.showFieldError('pppoe-profile-select', 'Debe seleccionar un plan.');
+            isValid = false;
+        }
+        if (!validators.isRequired(username)) {
+            formUtils.showFieldError('pppoe-username', 'El nombre de usuario es requerido.');
+            isValid = false;
+        }
+        if (!validators.isRequired(password)) {
+            formUtils.showFieldError('pppoe-password', 'La contraseña es requerida.');
+            isValid = false;
+        }
+        
+        if (!isValid) return;
+
+        try {
+            const data = {
+                username: username,
+                password: password,
+                profile: profile,
+                comment: `client_id:${currentEditingClient.id}:${clientName}`, // Comentario para enlazar
+                service: 'pppoe'
+            };
+
+            const response = await fetch(`${API_BASE_URL}/api/routers/${host}/pppoe/secrets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to create service');
+            }
+
+            alert('¡Servicio PPPoE creado exitosamente!');
+            closeClientModal();
+            
+        } catch (error) {
+            pppoeFormErrorMain.textContent = `Error: ${error.message}`;
+            pppoeFormErrorMain.classList.remove('hidden');
+        }
+    }
+
 
     // --- INICIALIZACIÓN Y EVENT LISTENERS ---
     
@@ -347,14 +548,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addClientButton) addClientButton.addEventListener('click', () => openClientModal());
     if (cancelClientButton) cancelClientButton.addEventListener('click', closeClientModal);
     if (cancelClientButtonX) cancelClientButtonX.addEventListener('click', closeClientModal);
+    if (cancelClientButtonTab2) cancelClientButtonTab2.addEventListener('click', closeClientModal);
     if (clientModal) clientModal.addEventListener('click', (e) => { if (e.target === clientModal) closeClientModal(); });
-    if (clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
+    
+    // Pestañas
+    if (tabBtnInfo) tabBtnInfo.addEventListener('click', () => switchTab('info'));
+    if (tabBtnService) tabBtnService.addEventListener('click', () => switchTab('service'));
 
+    // Formularios
+    if (clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
+    if (pppoeServiceForm) pppoeServiceForm.addEventListener('submit', handlePppoeFormSubmit);
+    
     // Botón de Asignar CPE
     const assignCpeButton = document.getElementById('assign-cpe-button');
     if (assignCpeButton) {
         assignCpeButton.addEventListener('click', handleAssignCPE);
     }
+    
+    // Select de Router (Pestaña 2)
+    if (pppoeRouterSelect) pppoeRouterSelect.addEventListener('change', handleRouterSelectChange);
+    if (cancelPppoeFormBtn) cancelPppoeFormBtn.addEventListener('click', () => {
+         pppoeServiceForm.classList.add('hidden');
+         // (Aquí podríamos mostrar un botón de "Crear servicio" de nuevo)
+    });
 
     // Carga inicial
     loadAllClients();
