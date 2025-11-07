@@ -29,21 +29,19 @@
         <div class="w-full max-w-md">
             <div class="flex justify-center items-center gap-3 mb-8">
                 <span class="material-symbols-outlined text-primary text-5xl">router</span>
-                <h1 class="text-3xl font-bold text-text-primary">µMonitor Pro</h1>
+                <h1 class="text-3xl font-bold text-text-primary">µISP Monitor</h1>
             </div>
 
-            <div class="bg-surface-1 rounded-lg border border-border-color p-8 shadow-2xl">
+            <div class="bg-surface-1 rounded-lg border border-border-color p-8 shadow-2xl transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20">
                 <h2 class="text-2xl font-bold text-center mb-1">Welcome Back!</h2>
                 <p class="text-text-secondary text-center mb-6">Sign in to continue</p>
 
-                <!-- El mensaje de error se mostrará aquí -->
                 {% if error_message %}
                 <div id="error-message" class="bg-danger/20 border border-danger text-danger text-sm rounded-md p-3 mb-4 text-center">
                     {{ error_message }}
                 </div>
                 {% endif %}
 
-                <!-- El método del formulario es POST y la acción apunta a /token -->
                 <form action="/token" method="post" class="space-y-6">
                     <div>
                         <label for="username" class="block text-sm font-medium mb-1">Username</label>
@@ -63,7 +61,7 @@
                     </div>
                 </form>
             </div>
-        </div>
+            </div>
     </div>
 </body>
 </html>

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Routers - µMonitor Pro{% endblock %}
+
+{% block content %}
+<main class="flex-1 p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-4xl font-bold">Manage MikroTik Routers</h1>
+            <button id="add-router-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
+                <span class="material-symbols-outlined mr-2">add</span>
+                <span>Add New Router</span>
+            </button>
+        </div>
+
+        <div class="bg-surface-1 rounded-lg border border-border-color">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-2">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Hostname / Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Host (IP)</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Zone</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Model / Firmware</th>
+                            <th class="px-6 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="router-table-body" class="divide-y divide-border-color">
+                        <tr><td colspan="6" class="p-8 text-center text-text-secondary">Loading routers...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div id="router-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-2xl border border-border-color my-auto">
+        <form id="router-form">
+            <input type="hidden" id="router-host-edit" name="host_edit">
+            
+            <div class="p-6 border-b border-border-color flex justify-between items-center">
+                <h3 id="modal-title" class="text-2xl font-bold">Add New Router</h3>
+                <button type="button" id="cancel-router-button-x" class="text-text-secondary hover:text-text-primary text-3xl font-bold">&times;</button>
+            </div>
+            
+            <div class="p-8 max-h-[70vh] overflow-y-auto space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="router-host" class="block text-sm font-medium mb-1">Host (IP Address)</label>
+                        <input type="text" id="router-host" name="host" required class="w-full bg-background border border-border-color rounded-md p-2">
+                        <span id="router-host-error" class="form-error hidden mt-1"></span>
+                    </div>
+                    <div>
+                        <label for="router-zona_id" class="block text-sm font-medium mb-1">Zone</label>
+                        <select id="router-zona_id" name="zona_id" required class="w-full bg-background border border-border-color rounded-md p-2"></select>
+                        <span id="router-zona_id-error" class="form-error hidden mt-1"></span>
+                    </div>
+                    <div>
+                        <label for="router-api_port" class="block text-sm font-medium mb-1">API Port (Inseguro)</label>
+                        <input type="number" id="router-api_port" name="api_port" value="8728" required class="w-full bg-background border border-border-color rounded-md p-2">
+                        <p class="text-xs text-text-secondary mt-1">Puerto de API (sin SSL). Usado para el aprovisionamiento inicial.</p>
+                        <span id="router-api_port-error" class="form-error hidden mt-1"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-md font-semibold text-text-primary">Admin Credentials</h4>
+                    <p class="text-xs text-text-secondary mb-2">Credenciales de admin (ej. 'admin') usadas para el aprovisionamiento inicial.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <div>
+                            <label for="router-username" class="block text-sm font-medium mb-1">Admin Username</label>
+                            <input type="text" id="router-username" name="username" value="admin" required class="w-full bg-background border border-border-color rounded-md p-2">
+                            <span id="router-username-error" class="form-error hidden mt-1"></span>
+                        </div>
+                        <div>
+                            <label for="router-password" class="block text-sm font-medium mb-1">Admin Password</label>
+                            <input type="password" id="router-password" name="password" required class="w-full bg-background border border-border-color rounded-md p-2">
+                            <span id="router-password-error" class="form-error hidden mt-1"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="router-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
+            </div>
+            
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                <button type="button" id="cancel-router-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
+                <button type="submit" id="save-router-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Router</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="provision-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-lg border border-border-color">
+        <form id="provision-form">
+            <input type="hidden" id="provision-host">
+            
+            <div class="p-6 border-b border-border-color">
+                <h3 id="provision-modal-title" class="text-2xl font-bold">Provision Router</h3>
+            </div>
+            
+            <div class="p-8 space-y-4">
+                <p class="text-text-secondary">Esto creará un nuevo usuario API dedicado y configurará un certificado SSL en el router. Por favor, define las credenciales para este **nuevo** usuario.</p>
+                <div>
+                    <label for="provision-new-user" class="block text-sm font-medium mb-1">Nuevo Usuario API</label>
+                    <input type="text" id="provision-new-user" value="api-user" required class="w-full bg-background border border-border-color rounded-md p-2">
+                </div>
+                <div>
+                    <label for="provision-new-pass" class="block text-sm font-medium mb-1">Nueva Contraseña API</label>
+                    <input type="password" id="provision-new-pass" required class="w-full bg-background border border-border-color rounded-md p-2">
+                </div>
+                
+                <div id="provision-feedback" class="hidden space-y-2 pt-4">
+                    <div class="flex items-center gap-2 text-warning">
+                        <span id="provision-spinner" class="material-symbols-outlined text-base animate-spin">sync</span>
+                        <span id="provision-status-text">Aprovisionando, por favor espera...</span>
+                    </div>
+                    <pre id="provision-error-details" class="text-xs text-danger bg-danger/10 p-2 rounded-md max-h-32 overflow-y-auto"></pre>
+                </div>
+            </div>
+
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                <button type="button" id="cancel-provision-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
+                <button type="submit" id="start-provision-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-orange hover:bg-orange-600 flex items-center gap-2">Start Provisioning</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/utils/validators.js"></script>
+<script src="/static/js/utils/form-utils.js"></script>
+
+<script src="/static/js/routers.js" defer></script>
+{% endblock %}

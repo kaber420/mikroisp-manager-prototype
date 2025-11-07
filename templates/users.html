@@ -3,7 +3,6 @@
 {% block title %}Manage Users - µMonitor Pro{% endblock %}
 
 {% block content %}
-<!-- Contenido Principal -->
 <main class="flex-1 p-6 lg:p-8">
     <div class="max-w-4xl mx-auto">
         <div class="flex items-center justify-between mb-8">
@@ -14,50 +13,46 @@
             </button>
         </div>
         <div id="user-list-container" class="bg-surface-1 rounded-lg border border-border-color">
-            <!-- Las filas de los usuarios se insertarán aquí dinámicamente -->
-        </div>
+            </div>
     </div>
 </main>
 
-<!-- Modal para Añadir/Editar Usuario -->
 <div id="user-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
     <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-lg border border-border-color">
         <form id="user-form">
-            <!-- Usaremos un campo oculto para saber si estamos editando o creando -->
             <input type="hidden" id="user-form-mode" name="mode">
             
             <div class="p-6 border-b border-border-color"><h3 id="modal-title" class="text-2xl font-bold">Add New User</h3></div>
             
             <div class="p-8 space-y-6">
-                <!-- Fila de Usuario y Rol -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="user-username" class="block text-sm font-medium mb-1">Username</label>
                         <input type="text" id="user-username" name="username" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <span id="user-username-error" class="form-error hidden mt-1"></span>
                     </div>
                     <div>
                         <label for="user-role" class="block text-sm font-medium mb-1">Role</label>
                         <select id="user-role" name="role" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
                             <option value="admin">Admin</option>
-                            <!-- Aquí podrías añadir otros roles en el futuro -->
-                        </select>
+                            </select>
                     </div>
                 </div>
                 
-                <!-- Fila de Contraseña -->
                 <div>
                     <label for="user-password" class="block text-sm font-medium mb-1">Password</label>
                     <input type="password" id="user-password" name="password" placeholder="Leave blank to keep current" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
                     <p id="password-help-text" class="text-xs text-text-secondary mt-1">Required for new users.</p>
+                    <span id="user-password-error" class="form-error hidden mt-1"></span>
                 </div>
                 
-                <!-- Fila de Configuración de Telegram -->
                 <div>
                     <h4 class="text-md font-semibold text-text-primary mb-2">Notifications</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="user-telegram_chat_id" class="block text-sm font-medium mb-1">Telegram Chat ID</o>
+                            <label for="user-telegram_chat_id" class="block text-sm font-medium mb-1">Telegram Chat ID</label>
                             <input type="text" id="user-telegram_chat_id" name="telegram_chat_id" placeholder="Optional" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                            <span id="user-telegram_chat_id-error" class="form-error hidden mt-1"></span>
                         </div>
                         <div class="space-y-3 pt-1">
                             <label class="flex items-center gap-3 cursor-pointer">
@@ -72,15 +67,14 @@
                     </div>
                 </div>
 
-                <!-- Fila para Deshabilitar Usuario -->
-                 <div>
+                <div>
                     <label class="flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" id="user-disabled" name="disabled" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
                         <span class="text-sm font-medium text-warning">Disable this user account</span>
                     </label>
                 </div>
 
-                <div id="user-form-error" class="text-danger text-sm hidden"></div>
+                <div id="user-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
             </div>
             
             <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
@@ -93,6 +87,8 @@
 {% endblock %}
 
 {% block scripts %}
-{# El siguiente paso será crear este archivo #}
+<script src="/static/js/utils/validators.js"></script>
+<script src="/static/js/utils/form-utils.js"></script>
+
 <script src="/static/js/users.js" defer></script>
 {% endblock %}

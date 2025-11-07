@@ -1,47 +1,59 @@
+// static/js/zonas.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = window.location.origin;
 
-    // --- Referencias a Elementos del DOM ---
     const addZoneButton = document.getElementById('add-zone-button');
     const zoneModal = document.getElementById('zone-modal');
     const zoneForm = document.getElementById('zone-form');
     const cancelZoneButton = document.getElementById('cancel-zone-button');
-    const zoneFormError = document.getElementById('zone-form-error');
+    const zoneFormError = document.getElementById('zone-form-error-main');
     const modalTitle = document.getElementById('modal-title');
     const zoneIdInput = document.getElementById('zone-id');
     const zoneNameInput = document.getElementById('zone-name');
     const zoneListContainer = document.getElementById('zone-list-container');
 
-    // --- Funciones del Modal ---
     function openZoneModal(zone = null) {
         if (!zoneForm) return;
-        zoneForm.reset();
-        zoneFormError.classList.add('hidden');
-        if (zone) { // Modo Edición
-            modalTitle.textContent = 'Edit Zone';
+        formUtils.resetModalForm('zone-modal');
+        
+        if (zone) {
+            modalTitle.textContent = 'Edit Zone Name';
             zoneIdInput.value = zone.id;
             zoneNameInput.value = zone.nombre;
-        } else { // Modo Creación
+        } else {
             modalTitle.textContent = 'Add New Zone';
             zoneIdInput.value = '';
         }
         zoneModal.classList.add('is-open');
     }
+    
     function closeZoneModal() {
         if (zoneModal) {
             zoneModal.classList.remove('is-open');
         }
     }
     
-    // --- Lógica de la API ---
     async function handleZoneFormSubmit(event) {
         event.preventDefault();
+        formUtils.clearFormErrors(zoneForm);
+        let isValid = true;
+        const zoneName = zoneNameInput.value;
+
+        if (!validators.isValidZoneName(zoneName)) {
+            formUtils.showFieldError('zone-name', 'El nombre es requerido y solo puede contener letras, números, espacios y guiones.');
+            isValid = false;
+        }
+        
+        if (!isValid) return;
+
         const zoneId = zoneIdInput.value;
         const isEditing = !!zoneId;
         const url = isEditing ? `${API_BASE_URL}/api/zonas/${zoneId}` : `${API_BASE_URL}/api/zonas`;
+        // Para editar, ahora solo actualizamos el nombre desde este modal simple
         const method = isEditing ? 'PUT' : 'POST';
+        const data = { nombre: zoneName };
 
-        const data = { nombre: zoneNameInput.value };
         try {
             const response = await fetch(url, {
                 method: method,
@@ -55,13 +67,15 @@ document.addEventListener('DOMContentLoaded', () => {
             closeZoneModal();
             loadZones();
         } catch (error) {
-            zoneFormError.textContent = `Error: ${error.message}`;
-            zoneFormError.classList.remove('hidden');
+            if (zoneFormError) {
+                zoneFormError.textContent = `Error: ${error.message}`;
+                zoneFormError.classList.remove('hidden');
+            }
         }
     }
     
     async function handleDeleteZone(zoneId, zoneName) {
-        if (confirm(`Are you sure you want to delete the zone "${zoneName}"?\nThis action cannot be undone.`)) {
+        if (confirm(`Are you sure you want to delete the zone "${zoneName}"?\nThis will also delete ALL its documentation and infrastructure data.`)) {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/zonas/${zoneId}`, { method: 'DELETE' });
                 if (!response.ok) {
@@ -88,10 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            zoneListContainer.innerHTML = ''; // Limpiar
+            zoneListContainer.innerHTML = '';
             zones.forEach(zone => {
                 const zoneRow = document.createElement('div');
                 zoneRow.className = 'flex items-center justify-between p-4 border-b border-border-color last:border-b-0 hover:bg-surface-2';
+                
+                // --- INICIO DE CAMBIO: Botón de "Manage" ---
                 zoneRow.innerHTML = `
                     <div class="flex items-center gap-4">
                         <div class="flex items-center justify-center rounded-lg bg-primary/20 text-primary shrink-0 size-10">
@@ -100,12 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="font-semibold text-text-primary">${zone.nombre}</p>
                     </div>
                     <div class="flex items-center gap-4">
-                        <button title="Edit Zone" class="edit-btn text-text-secondary hover:text-primary"><span class="material-symbols-outlined">edit</span></button>
+                        <button title="Rename Zone" class="edit-btn text-text-secondary hover:text-primary"><span class="material-symbols-outlined">edit</span></button>
                         <button title="Delete Zone" class="delete-btn text-text-secondary hover:text-danger"><span class="material-symbols-outlined">delete</span></button>
+                        <button title="Manage Zone" class="manage-btn flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md bg-surface-2 hover:bg-border-color">
+                            <span class="material-symbols-outlined text-base">settings</span>
+                            Manage
+                        </button>
                     </div>
                 `;
-                zoneRow.querySelector('.edit-btn').onclick = () => openZoneModal(zone);
+                zoneRow.querySelector('.edit-btn').onclick = () => openZoneModal(zone); // Modal para renombrar rápido
                 zoneRow.querySelector('.delete-btn').onclick = () => handleDeleteZone(zone.id, zone.nombre);
+                zoneRow.querySelector('.manage-btn').onclick = () => {
+                    window.location.href = `/zona/${zone.id}`; // Navega a la página de detalles
+                };
+                // --- FIN DE CAMBIO ---
                 zoneListContainer.appendChild(zoneRow);
             });
         } catch (error) {
@@ -114,12 +138,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listeners ---
     if (addZoneButton) addZoneButton.addEventListener('click', () => openZoneModal());
     if (cancelZoneButton) cancelZoneButton.addEventListener('click', closeZoneModal);
     if (zoneForm) zoneForm.addEventListener('submit', handleZoneFormSubmit);
     if (zoneModal) zoneModal.addEventListener('click', (e) => { if (e.target === zoneModal) closeZoneModal(); });
     
-    // Carga inicial de las zonas
     loadZones();
 });
