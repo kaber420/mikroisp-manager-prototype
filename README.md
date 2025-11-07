@@ -71,11 +71,11 @@ pip install -r requirements.txt
 El script main.py se encarga de iniciar la base de datos, el monitor en segundo plano y el servidor web.
 Bash
 
-python main.py
+python launcher.py
 
 4. Configuración Inicial (Primer Usuario)
 
-La primera vez que ejecutes main.py, la aplicación detectará que no hay usuarios en la base de datos e iniciará un asistente interactivo en tu terminal para crear la primera cuenta de administrador.
+La primera vez que ejecutes launcher.py, la aplicación detectará que no hay usuarios en la base de datos e iniciará un asistente interactivo en tu terminal para crear la primera cuenta de administrador.
 Bash
 
 --- Asistente de Configuración Inicial: Creación del Primer Administrador ---
@@ -87,7 +87,7 @@ Confirma la contraseña:
 
 Una vez que la aplicación esté corriendo, abre tu navegador y ve a:
 
-http://localhost:8000
+http://localhost:8000 o el purto elegido en el asistnt
 
 Inicia sesión con el usuario y contraseña que acabas de crear.
 
