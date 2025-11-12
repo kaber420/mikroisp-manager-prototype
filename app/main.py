@@ -8,15 +8,19 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from datetime import timedelta
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .auth import (
     User, get_current_active_user, verify_password,
     create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, Token
 )
+# --- IMPORTACIONES DE API ACTUALIZADAS ---
 from .db import users_db
-from .api import routers_api, users_api, clients_api, cpes_api, zonas_api, settings_api, aps_api, stats_api
+from .api import users_api, clients_api, cpes_api, zonas_api, settings_api, aps_api, stats_api
+# ¡Importamos el nuevo módulo principal de routers!
+from .api.routers import main as routers_main_api
 
-app = FastAPI(title="µMonitor Pro", version="0.4.0") # Versión actualizada
+app = FastAPI(title="µMonitor Pro", version="0.4.0")
 
 origins = ["*"]
 app.add_middleware(
@@ -28,12 +32,8 @@ current_dir = os.path.dirname(__file__)
 static_dir = os.path.join(current_dir, '..', 'static')
 templates_dir = os.path.join(current_dir, '..', 'templates')
 
-# --- INICIO DE CÓDIGO AÑADIDO ---
-# Crear el directorio de subidas si no existe
 os.makedirs("uploads", exist_ok=True) 
-# Montar el directorio para que sea accesible desde la URL /uploads
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-# --- FIN DE CÓDIGO AÑADIDO ---
 
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 templates = Jinja2Templates(directory=templates_dir)
@@ -42,7 +42,6 @@ ACCESS_TOKEN_COOKIE_NAME = "umonitorpro_access_token"
 async def get_current_user_or_redirect(user: User = Depends(get_current_active_user)) -> User:
     return user
 
-from starlette.exceptions import HTTPException as StarletteHTTPException
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code == 401 and not request.url.path.startswith('/api/'):
@@ -52,7 +51,6 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     from fastapi.responses import JSONResponse
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-# ... (Endpoints de /login, /token, /logout sin cambios) ...
 @app.get("/login", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -79,7 +77,7 @@ async def logout_and_redirect():
 @app.get("/", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_dashboard(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("dashboard.html", {"request": request, "active_page": "dashboard"})
-# ... (otras páginas sin cambios: /aps, /ap/{host}, etc.)
+
 @app.get("/aps", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_aps_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("aps.html", {"request": request, "active_page": "aps"})
@@ -92,7 +90,6 @@ async def read_ap_details_page(request: Request, host: str, current_user: User =
 async def read_zones_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("zonas.html", {"request": request, "active_page": "zonas"})
 
-# --- NUEVA RUTA PARA DETALLES DE ZONA ---
 @app.get("/zona/{zona_id}", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_zona_details_page(request: Request, zona_id: int, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("zona_details.html", {"request": request, "active_page": "zonas", "zona_id": zona_id})
@@ -100,7 +97,7 @@ async def read_zona_details_page(request: Request, zona_id: int, current_user: U
 @app.get("/settings", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_settings_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("settings.html", {"request": request, "active_page": "settings"})
-# ... (resto de páginas sin cambios)
+
 @app.get("/users", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_users_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("users.html", {"request": request, "active_page": "users"})
@@ -113,6 +110,10 @@ async def read_cpes_page(request: Request, current_user: User = Depends(get_curr
 async def read_clients_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("clients.html", {"request": request, "active_page": "clients"})
 
+@app.get("/client/{client_id}", response_class=HTMLResponse, tags=["Auth & Pages"])
+async def read_client_details_page(request: Request, client_id: int, current_user: User = Depends(get_current_user_or_redirect)):
+    return templates.TemplateResponse("client_details.html", {"request": request, "active_page": "clients", "client_id": client_id})
+
 @app.get("/routers", response_class=HTMLResponse, tags=["Auth & Pages"])
 async def read_routers_page(request: Request, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("routers.html", {"request": request, "active_page": "routers"})
@@ -121,7 +122,6 @@ async def read_routers_page(request: Request, current_user: User = Depends(get_c
 async def read_router_details_page(request: Request, host: str, current_user: User = Depends(get_current_user_or_redirect)):
     return templates.TemplateResponse("router_details.html", {"request": request, "active_page": "router_details", "host": host})
 
-# ... (Endpoint de API login sin cambios) ...
 @app.post("/api/login/access-token", response_model=Token, tags=["API Auth"])
 async def login_for_api_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = users_db.get_user_by_username(form_data.username)
@@ -131,8 +131,8 @@ async def login_for_api_access_token(form_data: OAuth2PasswordRequestForm = Depe
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- Incluir todos los routers de la API ---
-app.include_router(routers_api.router, prefix="/api", tags=["Routers"])
+# --- Inclusión de todos los routers de la API ---
+app.include_router(routers_main_api.router, prefix="/api", tags=["Routers"]) # <-- ¡LÍNEA CAMBIADA!
 app.include_router(aps_api.router, prefix="/api", tags=["APs"])
 app.include_router(cpes_api.router, prefix="/api", tags=["CPEs"])
 app.include_router(clients_api.router, prefix="/api", tags=["Clients"])

@@ -18,18 +18,22 @@ def _setup_inventory_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # ... (código existente para settings, users) ...
+    # --- Tabla de Configuración (Settings) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT
     )
     """)
+    # --- VALORES POR DEFECTO ACTUALIZADOS ---
     default_settings = [
         ('telegram_bot_token', ''), ('telegram_chat_id', ''),
-        ('default_monitor_interval', '300'), ('dashboard_refresh_interval', '60')
+        ('default_monitor_interval', '300'), ('dashboard_refresh_interval', '60'),
+        ('suspension_run_hour', '02:00') # <-- NUEVA SETTING AÑADIDA
     ]
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
+    
+    # --- Tabla de Usuarios (Users) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY, hashed_password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin',
@@ -38,7 +42,7 @@ def _setup_inventory_db():
     )
     """)
 
-    # --- INICIO DE MODIFICACIONES PARA ZONAS ---
+    # --- Tablas de Zonas (Zonas) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS zonas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,9 +89,8 @@ def _setup_inventory_db():
         FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE CASCADE
     );
     """)
-    # --- FIN DE MODIFICACIONES PARA ZONAS ---
 
-    # ... (código existente para aps, clients, cpes, routers) ...
+    # --- Tablas de Dispositivos (APs, CPEs, Routers) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS aps (
         host TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, zona_id INTEGER,
@@ -96,14 +99,19 @@ def _setup_inventory_db():
         FOREIGN KEY (zona_id) REFERENCES zonas (id) ON DELETE SET NULL
     )
     """)
+    
+    # --- TABLA DE CLIENTES (MODIFICADA) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, address TEXT, phone_number TEXT,
         whatsapp_number TEXT, email TEXT, telegram_contact TEXT, coordinates TEXT, notes TEXT,
-        service_status TEXT NOT NULL DEFAULT 'active', suspension_method TEXT, billing_day INTEGER,
+        service_status TEXT NOT NULL DEFAULT 'active', 
+        billing_day INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    # (Se eliminó 'suspension_method TEXT' de esta tabla)
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cpes (
         mac TEXT PRIMARY KEY, hostname TEXT, model TEXT, firmware TEXT, ip_address TEXT, client_id INTEGER,
@@ -111,6 +119,7 @@ def _setup_inventory_db():
         FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE SET NULL
     )
     """)
+    
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS routers (
         host TEXT PRIMARY KEY, api_port INTEGER DEFAULT 8728, api_ssl_port INTEGER DEFAULT 8729,
@@ -119,14 +128,59 @@ def _setup_inventory_db():
         FOREIGN KEY (zona_id) REFERENCES zonas (id) ON DELETE SET NULL
     )
     """)
+
+    # --- INICIO DE NUEVAS TABLAS PARA CLIENTES Y FACTURACIÓN ---
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS client_services (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        router_host TEXT NOT NULL,
+        service_type TEXT NOT NULL DEFAULT 'pppoe',
+        pppoe_username TEXT UNIQUE,
+        router_secret_id TEXT,
+        profile_name TEXT,
+        suspension_method TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+        FOREIGN KEY (router_host) REFERENCES routers(host) ON DELETE SET NULL
+    )
+    """)
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS pagos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        monto REAL NOT NULL,
+        fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
+        mes_correspondiente TEXT NOT NULL,
+        metodo_pago TEXT,
+        notas TEXT,
+        
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+    )
+    """)
+
+    # --- FIN DE NUEVAS TABLAS ---
+
+    # --- Índices ---
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_aps_zona ON aps (zona_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cpes_ip ON cpes (ip_address);")
+    
+    # --- INICIO DE ÍNDICES PARA LAS NUEVAS TABLAS ---
+    
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_services_client_id ON client_services (client_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_client_id ON pagos (client_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_mes ON pagos (client_id, mes_correspondiente);")
+
+    # --- FIN DE ÍNDICES ---
     
     conn.commit()
     conn.close()
 
 def _setup_stats_db():
-    # ... (sin cambios en esta función)
+    # Esta función está perfecta, no requiere cambios.
     stats_db_file = _get_current_stats_db_file()
     stats_conn = sqlite3.connect(stats_db_file)
     stats_conn.row_factory = sqlite3.Row

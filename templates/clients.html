@@ -5,16 +5,16 @@
 {% block styles %}
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
 <style>
+    /* Estilos para las pestañas del modal */
     .tab-button.active {
         border-bottom-color: #3B82F6; /* primary */
         color: #F1F5F9; /* text-primary */
     }
-    .tab-panel {
-        display: none;
-    }
-    .tab-panel.active {
-        display: block;
-    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    
+    /* Cursor para la fila de la tabla */
+    #client-table-body tr { cursor: pointer; }
 </style>
 {% endblock %}
 
@@ -36,7 +36,7 @@
         </div>
         <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
-            <input type="text" id="search-input" placeholder="Search by name, address, phone..." class="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md focus:ring-primary focus:border-primary">
+            <input type="text" id="search-input" placeholder="Search by name, address, phone..." class="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md">
         </div>
     </div>
 
@@ -48,18 +48,18 @@
                         <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Name</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Address</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Phone Number</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">Assigned CPEs</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Phone</th>
+                        <th class="px-6 py-3 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">CPEs</th>
                         <th class="px-6 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="client-table-body" class="divide-y divide-border-color">
-                </tbody>
+                <tbody id="client-table-body" class="divide-y divide-border-color"></tbody>
             </table>
         </div>
     </div>
 </main>
 
+<!-- Modal para Crear/Editar Cliente y Servicio -->
 <div id="client-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4 overflow-y-auto">
     <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-4xl border border-border-color my-auto">
         <div class="p-6 border-b border-border-color flex justify-between items-center">
@@ -68,18 +68,16 @@
         </div>
         
         <div class="border-b border-border-color flex">
-            <button type="button" id="tab-btn-info" class="tab-button active py-4 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">
-                Client Information
-            </button>
-            <button type="button" id="tab-btn-service" class="tab-button py-4 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary" disabled>
-                Network Service
-            </button>
+            <button type="button" id="tab-btn-info" class="tab-button active py-4 px-6 text-sm font-semibold">Client Information</button>
+            <button type="button" id="tab-btn-service" class="tab-button py-4 px-6 text-sm font-semibold text-text-secondary" disabled>Network Service</button>
         </div>
 
+        <!-- Pestaña 1: Información del Cliente -->
         <div id="tab-panel-info" class="tab-panel active">
             <form id="client-form">
                 <input type="hidden" id="client-id" name="id">
-                <div class="p-8 max-h-[60vh] overflow-y-auto space-y-8">
+                <div class="p-8 max-h-[60vh] overflow-y-auto space-y-6">
+                    <!-- ... campos del formulario de cliente ... -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="client-name" class="block text-sm font-medium mb-1">Full Name</label>
@@ -104,66 +102,55 @@
                             <label for="client-address" class="block text-sm font-medium mb-1">Address</label>
                             <input type="text" id="client-address" name="address" class="w-full bg-background border border-border-color rounded-md p-2">
                         </div>
-                    </div>
-
-                    <div class="border-t border-border-color pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label for="client-service_status" class="block text-sm font-medium mb-1">Service Status</label>
-                            <select id="client-service_status" name="service_status" class="w-full bg-background border border-border-color rounded-md p-2">
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                         <div>
-                            <label for="client-suspension_method" class="block text-sm font-medium mb-1">Suspension Method</label>
-                            <select id="client-suspension_method" name="suspension_method" class="w-full bg-background border border-border-color rounded-md p-2">
-                                <option value="">(Not Set)</option>
-                                <option value="ubiquiti_mac_block">Ubiquiti MAC Block</option>
-                                <option value="mikrotik_firewall">MikroTik Firewall</option>
-                                <option value="mikrotik_queue">MikroTik Simple Queue</option>
-                            </select>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label for="client-service_status" class="block text-sm font-medium mb-1">Service Status</label>
+                                <select id="client-service_status" name="service_status" class="w-full bg-background border border-border-color rounded-md p-2">
+                                    <option value="active">Active</option>
+                                    <option value="suspended">Suspended</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="client-billing_day" class="block text-sm font-medium mb-1">Billing Day</label>
+                                <input type="number" id="client-billing_day" name="billing_day" min="1" max="31" class="w-full bg-background border border-border-color rounded-md p-2">
+                            </div>
                         </div>
                         <div>
-                            <label for="client-billing_day" class="block text-sm font-medium mb-1">Billing Day of Month</label>
-                            <input type="number" id="client-billing_day" name="billing_day" min="1" max="31" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <label for="client-notes" class="block text-sm font-medium mb-1">Notes</label>
+                            <textarea id="client-notes" name="notes" rows="3" class="w-full bg-background border border-border-color rounded-md p-2"></textarea>
                         </div>
                     </div>
-
-                    <div id="assigned-cpes-section" class="border-t border-border-color pt-6 hidden">
-                        <h4 class="text-md font-semibold text-text-primary mb-4">Assigned CPEs</h4>
-                        <div id="assigned-cpes-list" class="space-y-3 mb-4"></div>
-                        <div class="flex items-center gap-4">
+                    <div id="assigned-cpes-section" class="hidden">
+                         <h4 class="text-md font-semibold text-text-primary mb-2">Assigned CPEs</h4>
+                        <div id="assigned-cpes-list" class="space-y-2 mb-4"></div>
+                        <div class="flex items-center gap-2">
                             <select id="unassigned-cpe-select" class="flex-grow bg-background border border-border-color rounded-md p-2"></select>
-                            <button type="button" id="assign-cpe-button" class="px-4 py-2 text-sm font-semibold rounded-md bg-primary/20 text-primary hover:bg-primary/30">Assign CPE</button>
+                            <button type="button" id="assign-cpe-button" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-primary/20 text-primary hover:bg-primary/30">Assign</button>
                         </div>
                     </div>
-
-                     <div class="border-t border-border-color pt-6">
-                        <label for="client-notes" class="block text-sm font-medium mb-1">Notes / Installation Details</label>
-                        <textarea id="client-notes" name="notes" rows="4" class="w-full bg-background border border-border-color rounded-md p-2"></textarea>
-                    </div>
-
                     <div id="client-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
                 </div>
-                
                 <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
-                    <button type="button" id="cancel-client-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
-                    <button type="submit" id="save-client-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Client</button>
+                    <button type="button" id="cancel-client-button" class="px-4 py-2 rounded-md text-sm font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary">Save Client</button>
                 </div>
             </form>
         </div>
 
+        <!-- Pestaña 2: Servicio de Red -->
         <div id="tab-panel-service" class="tab-panel">
             <div class="p-8 max-h-[60vh] overflow-y-auto space-y-6">
-                
-                <div id="pppoe-service-status" class="space-y-4">
-                    <p class="text-text-secondary text-center">Loading network service details...</p>
-                    </div>
+                <div>
+                    <label for="service_type" class="block text-sm font-medium mb-1">Service Type</label>
+                    <select id="service_type" name="service_type" class="w-full bg-background border border-border-color rounded-md p-2">
+                        <option value="">Select a service type...</option>
+                        <option value="pppoe">PPPoE</option>
+                    </select>
+                </div>
 
                 <form id="pppoe-service-form" class="hidden space-y-4 pt-4 border-t border-border-color">
-                    <h4 class="text-lg font-semibold text-text-primary">Create New PPPoE Service</h4>
-                    
+                    <h4 class="text-lg font-semibold text-text-primary">PPPoE Service Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="pppoe-router-select" class="block text-sm font-medium mb-1">Router</label>
@@ -176,7 +163,6 @@
                             <span id="pppoe-profile-select-error" class="form-error hidden mt-1"></span>
                         </div>
                     </div>
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="pppoe-username" class="block text-sm font-medium mb-1">PPPoE Username</label>
@@ -189,28 +175,24 @@
                             <span id="pppoe-password-error" class="form-error hidden mt-1"></span>
                         </div>
                     </div>
-                    
-                    <div id="pppoe-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
-                    
-                    <div class="flex justify-end gap-4">
-                        <button type="button" id="cancel-pppoe-form-btn" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
-                        <button type="submit" id="save-pppoe-form-btn" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Service</button>
+                    <div id="suspension-method-wrapper" class="hidden">
+                        <label for="suspension_method" class="block text-sm font-medium mb-1">Suspension Method</label>
+                        <select id="suspension_method" class="w-full bg-background border border-border-color rounded-md p-2"></select>
                     </div>
+                    <div id="pppoe-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
                 </form>
             </div>
-            
-             <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
-                <button type="button" id="cancel-client-button-tab2" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Close</button>
+            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                <button type="button" id="cancel-client-button-tab2" class="px-4 py-2 rounded-md text-sm font-semibold">Cancel</button>
+                <button type="button" id="save-service-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary">Save Service</button>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/utils/validators.js"></script>
 <script src="/static/js/utils/form-utils.js"></script>
-
 <script src="/static/js/clients.js" defer></script>
 {% endblock %}

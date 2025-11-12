@@ -1,96 +1,144 @@
-µMonitor Pro (Prototipo de MikroISP Manager)
+# µMonitor Pro (MikroISP Manager)
 
-Un sistema de monitoreo y gestión para Proveedores de Servicios de Internet Inalámbrico (WISP). Este prototipo está diseñado para gestionar tanto puntos de acceso (APs) Ubiquiti AirOS como routers MikroTik desde una única interfaz web unificada.
+##  Características Principales
 
-🚀 Características Principales
+Este proyecto está evolucionando de un simple monitor a un panel de gestión ligero, incluyendo:
 
-Este proyecto, aunque es un prototipo, incluye una base sólida de características de gestión:
+* **Gestión Multi-Fabricante:**
+    * **MikroTik (RouterOS):** Monitoreo de recursos, aprovisionamiento de usuario API con SSL, gestión de PPPoE (Planes, Perfiles, Secrets), gestión de Red (IPs, NAT), gestión de Sistema (Usuarios del Router, Backups/Exports).
+    * **Ubiquiti (AirOS):** Monitoreo en tiempo real de APs (estado, clientes conectados, airtime, throughput).
 
-    Gestión de Red Multi-Fabricante:
+* **Gestión de Red y Clientes:**
+    * **Gestión de Zonas:** El pilar central. Agrupa tus dispositivos de red (APs y Routers) por ubicación física o lógica.
+    * **Gestión de Clientes:** Base de datos de clientes con su información de contacto y estado de servicio.
+    * **Gestión de CPEs:** Inventario global de todos los CPEs (clientes Ubiquiti) detectados, con capacidad de asignarlos a un cliente.
 
-        MikroTik: Gestión completa de routers, incluyendo el aprovisionamiento inicial (creación de usuario API y certificado SSL) e instalación de configuraciones base (PPPoE, Queues).
+* **Sistema y Monitoreo:**
+    * **Dashboard:** Vista global del estado de la red, incluyendo APs con mayor airtime y CPEs con peor señal.
+    * **Sistema de Usuarios:** Múltiples usuarios administradores para la plataforma.
+    * **Alertas:** Notificaciones de estado (ej. AP caído, Router caído) a través de Telegram.
+    * **Cifrado:** Las contraseñas de los dispositivos se almacenan cifradas en la base de datos.
 
-        Ubiquiti: Monitoreo de APs AirOS (estado, clientes, airtime) a través de la API status.cgi.
+## 🛠 Stack Tecnológico
 
-    Gestión de Clientes y Dispositivos:
+* **Backend:** [FastAPI](https://fastapi.tiangolo.com/) y Uvicorn.
+* **Frontend:** [Jinja2](https://jinja.palletsprojects.com/) (para el renderizado de plantillas HTML) y [Tailwind CSS](https://tailwindcss.com/) (para el diseño de la UI).
+* **Base de Datos:** SQLite (para el inventario y las estadísticas).
+* **Conectividad:**
+    * 
+outeros-api: Para la comunicación con dispositivos MikroTik.
+    * 
+equests (Cliente HTTP): Para la comunicación con dispositivos Ubiquiti (vía status.cgi).
+* **Autenticación:** passlib[bcrypt] y python-jose[cryptography] para hashing de contraseñas y tokens JWT.
 
-        Gestión de Clientes (Personas) con su información de contacto y estado de servicio.
+##  Cómo Empezar
 
-        Gestión de CPEs (Dispositivos) con capacidad de asignarlos a un cliente.
+### Prerrequisitos
 
-    Organización y Sistema:
+* Python 3.10 o superior.
+* pip (Python package installer).
 
-        Gestión de Zonas: Agrupa tus dispositivos de red (APs y Routers) por ubicación física o lógica.
+### 1. Instalación
 
-        Sistema de Usuarios: Múltiples usuarios administradores con autenticación segura (JWT).
-
-        Alertas: Notificaciones de estado (ej. AP caído) a través de Telegram.
-
-🛠️ Stack Tecnológico
-
-Este proyecto está construido con un stack de Python moderno y ligero:
-
-    Backend: FastAPI (para la API REST) y Uvicorn (como servidor web).
-
-    Frontend: Jinja2 (para el renderizado de plantillas HTML) y Tailwind CSS (para el diseño de la UI).
-
-    Base de Datos: SQLite (para el inventario y las estadísticas).
-
-    Conectividad:
-
-        routeros-api: Para la comunicación con dispositivos MikroTik.
-
-        ap_client.py: Para la comunicación con dispositivos Ubiquiti.
-
-    Autenticación: passlib[bcrypt] y python-jose[cryptography] para hashing de contraseñas y tokens JWT.
-
-🏁 Cómo Empezar
-
-Prerrequisitos
-
-    Python 3.x
-
-    pip (Python package installer)
-
-1. Clonar el repositorio
-
-Bash
-
+Clona este repositorio y muévete a la carpeta principal:
+```bash
 git clone <URL-DE-TU-REPOSITORIO>
-cd mikroisp-manager-prototype-router-mod
+cd mikroisp-manager-main
+```
 
-2. Instalar dependencias
-
-Este proyecto usa un archivo requirements.txt para gestionar sus dependencias.
-Bash
-
+Instala las dependencias:
+```bash
 pip install -r requirements.txt
+```
 
-3. Ejecutar la aplicación
+### 2. Ejecutar la Aplicación
 
-El script main.py se encarga de iniciar la base de datos, el monitor en segundo plano y el servidor web.
-Bash
+El script launcher.py se encarga de todo: inicia la base de datos, el monitor en segundo plano y el servidor web.
 
-python main.py
+```bash
+python launcher.py
+```
 
-4. Configuración Inicial (Primer Usuario)
+---
 
-La primera vez que ejecutes main.py, la aplicación detectará que no hay usuarios en la base de datos e iniciará un asistente interactivo en tu terminal para crear la primera cuenta de administrador.
-Bash
+## ⚙ Configuración Inicial
 
+Si es la primera vez que ejecutas la aplicación, el launcher te guiará a través de dos asistentes en la terminal.
+
+### Asistente de Configuración (.env)
+
+La primera vez que ejecutes launcher.py, o si lo ejecutas con python launcher.py --config, aparecerá un asistente para configurar tu archivo .env. Este archivo guarda las configuraciones básicas del servidor.
+
+El asistente te preguntará por el puerto y el nombre de la base de datos:
+
+1.  **Puerto de la App Web:**
+    ```bash
+    ¿En qué puerto debe correr la App Web? (Actual: 8000): 
+    ```
+    * Puedes escribir un nuevo número (ej. 8080) y presionar Enter.
+    * O simplemente **presiona Enter** para usar el valor (Actual: 8000).
+
+2.  **Nombre de la Base de Datos:**
+    ```bash
+    ¿Nombre del archivo de la base de datos? (Actual: inventory.sqlite): 
+    ```
+    * Puedes escribir un nuevo nombre (ej. mi_red.db) y presionar Enter.
+    * O simplemente **presiona Enter** para usar el valor (Actual: inventory.sqlite).
+
+El asistente también generará claves de seguridad (SECRET_KEY y ENCRYPTION_KEY) automáticamente.
+
+### Creación del Primer Administrador
+
+Inmediatamente después del asistente de .env (solo la primera vez), la aplicación detectará que la base de datos está vacía e iniciará un segundo asistente para crear tu cuenta de administrador:
+
+```bash
 --- Asistente de Configuración Inicial: Creación del Primer Administrador ---
 Introduce el nombre de usuario para el administrador: admin
 Introduce la contraseña: 
 Confirma la contraseña: 
 
-5. Acceder a la Aplicación
+¡Usuario 'admin' creado! La aplicación ahora se iniciará.
+```
+
+### 3. Acceder a la Aplicación
 
 Una vez que la aplicación esté corriendo, abre tu navegador y ve a:
 
-http://localhost:8000
+**[http://localhost:8000](http://localhost:8000)** (o el puerto que hayas configurado).
 
 Inicia sesión con el usuario y contraseña que acabas de crear.
 
-⚖️ Licencia
+---
 
-Este proyecto está licenciado bajo la GNU Affero General Public License v3.0 (AGPL-3.0).
+## 🧭 Flujo de Trabajo Básico (Guía Rápida)
+
+Para que la aplicación funcione correctamente, sigue este orden:
+
+1.  **Crear una Zona:**
+    * Ve a **Manage Zones** en el menú lateral.
+    * Crea al menos una zona (ej. "Torre Principal", "Zona Centro").
+    * **Este paso es un requisito previo** para añadir cualquier dispositivo.
+
+2.  **Añadir Dispositivos (Asignar a Zona):**
+    * **Para Routers MikroTik:**
+        1.  Ve a **Manage Routers**.
+        2.  Añade el router con su IP, usuario dmin y contraseña (del router). Asigna la Zona creada.
+        3.  Haz clic en el botón **Provision** en la lista.
+        4.  Completa el formulario para crear un usuario API (ej. pi-user). Esto configurará SSL y creará un usuario de solo API con los permisos correctos.
+    * **Para APs Ubiquiti:**
+        1.  Ve a **Manage APs**.
+        2.  Añade el AP con su IP, usuario (ubnt) y contraseña. Asigna la Zona creada.
+
+3.  **Monitorear y Gestionar:**
+    * El monitor en segundo plano (monitor.py) comenzará a escanear tus dispositivos.
+    * En el **Dashboard**, empezarás a ver el estado de tus APs y CPEs.
+    * En **Manage CPEs**, verás una lista global de todos los clientes inalámbricos detectados.
+    * En **Manage Routers** > (Selecciona un router), podrás usar las pestañas para **Configurar Red** (IPs, NAT, PPPoE) o **Sistema** (Backups, Usuarios).
+
+4.  **Crear y Asignar Clientes:**
+    * Ve a **Manage Clients** y crea un nuevo cliente (persona o empresa).
+    * Edita el cliente, ve a la pestaña "Client Information" y podrás asignar los CPEs que se han detectado automáticamente.
+
+## ⚖ Licencia
+
+Este proyecto está licenciado bajo la Licencia Pública General de Affero GNU v3.0 (AGPL-3.0).

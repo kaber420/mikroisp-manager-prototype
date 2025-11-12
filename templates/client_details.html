@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Client Details - µMonitor Pro{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+<style>
+    .tab-button.active {
+        border-bottom-color: #3B82F6; /* primary */
+        color: #F1F5F9; /* text-primary */
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 p-6 lg:p-8">
+    <!-- Breadcrumb y Título -->
+    <div class="mb-6">
+        <a href="/clients" class="text-primary hover:underline">Manage Clients</a>
+        <span class="mx-2 text-text-secondary">/</span>
+        <span id="breadcrumb-clientname">Loading...</span>
+    </div>
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <h1 id="main-clientname" class="text-4xl font-bold">Loading Client...</h1>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="border-b border-border-color flex mb-6">
+        <button type="button" data-tab="info" class="tab-button active py-3 px-6 text-sm font-semibold">Info & Service Status</button>
+        <button type="button" data-tab="billing" class="tab-button py-3 px-6 text-sm font-semibold text-text-secondary">Billing & Payments</button>
+    </div>
+
+    <!-- Panel 1: Información y Estado -->
+    <div id="tab-info" class="tab-panel active">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Columna de Información del Cliente -->
+            <div class="bg-surface-1 rounded-lg border border-border-color">
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Client Information</h2></div>
+                <div id="client-info-container" class="p-6 text-sm space-y-2">
+                    <p class="text-text-secondary text-center">Loading info...</p>
+                </div>
+            </div>
+            <!-- Columna de Estado del Servicio -->
+            <div class="bg-surface-1 rounded-lg border border-border-color">
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Live Service Status</h2></div>
+                <div id="service-status-container" class="p-6 text-sm space-y-2">
+                    <p class="text-text-secondary text-center">Loading status...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel 2: Facturación y Pagos -->
+    <div id="tab-billing" class="tab-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Columna para Registrar Pago -->
+            <div class="bg-surface-1 rounded-lg border border-border-color">
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Register New Payment</h2></div>
+                <form id="register-payment-form" class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="payment-amount" class="block text-sm font-medium mb-1">Amount</label>
+                            <input type="number" step="0.01" id="payment-amount" required class="w-full bg-background border border-border-color rounded-md p-2">
+                        </div>
+                        <div>
+                            <label for="payment-month" class="block text-sm font-medium mb-1">Month (YYYY-MM)</label>
+                            <input type="text" id="payment-month" required placeholder="YYYY-MM" class="w-full bg-background border border-border-color rounded-md p-2">
+                        </div>
+                        <div>
+                            <label for="payment-method" class="block text-sm font-medium mb-1">Method</label>
+                            <select id="payment-method" class="w-full bg-background border border-border-color rounded-md p-2">
+                                <option value="Efectivo">Cash</option>
+                                <option value="Transferencia">Transfer</option>
+                                <option value="Otro">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="payment-notes" class="block text-sm font-medium mb-1">Notes (Optional)</label>
+                        <input type="text" id="payment-notes" placeholder="Reference no., etc." class="w-full bg-background border border-border-color rounded-md p-2">
+                    </div>
+                    <div id="payment-form-error" class="form-error-main text-danger text-sm hidden"></div>
+                    <div class="text-right pt-2">
+                        <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">
+                            Register Payment & Reactivate
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <!-- Columna para Historial de Pagos -->
+            <div class="bg-surface-1 rounded-lg border border-border-color">
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Payment History</h2></div>
+                <div id="payment-history-list" class="p-6 space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-text-secondary">Loading history...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/utils/validators.js"></script>
+<script src="/static/js/client_details.js" defer></script>
+{% endblock %}

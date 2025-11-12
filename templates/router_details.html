@@ -4,6 +4,11 @@
 
 {% block styles %}
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+<style>
+    .tab-button.active { border-bottom-color: #3B82F6; color: #F1F5F9; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -11,132 +16,250 @@
     <div class="mb-6"><a href="/routers" class="text-primary hover:underline">Manage Routers</a><span class="mx-2 text-text-secondary">/</span><span id="breadcrumb-hostname">Loading...</span></div>
     <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
         <h1 id="main-hostname" class="text-4xl font-bold">Loading Router...</h1>
-        </div>
+    </div>
     
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="border-b border-border-color flex mb-6">
+        <button type="button" data-tab="monitor" class="tab-button active py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Monitor</button>
+        <button type="button" data-tab="config" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Configuración de Red</button>
+        <button type="button" data-tab="sistema" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Sistema y Seguridad</button>
+    </div>
 
-        <div class="space-y-6">
+    <div id="tab-monitor" class="tab-panel active">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Recursos del Sistema</h2></div>
+                    <div class="p-6 space-y-2 text-sm">
+                        <div class="flex justify-between"><span>Modelo:</span><span id="res-model" class="font-semibold">Cargando...</span></div>
+                        <div class="flex justify-between"><span>Firmware:</span><span id="res-firmware" class="font-semibold">Cargando...</span></div>
+                        <div class="flex justify-between"><span>CPU:</span><span id="res-cpu" class="font-semibold">Cargando...</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Conexiones Activas</h2></div>
+                    <div class="p-6">
+                        <div id="pppoe-active-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
+                            <p class="text-text-secondary">Cargando conexiones...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">PPPoE Secrets (Usuarios)</h2></div>
+                    <div class="p-6">
+                        <div id="pppoe-secrets-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
+                            <p class="text-text-secondary">Cargando secretos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-config" class="tab-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Redes (LAN/WAN)</h2></div>
+                    <div class="p-6 space-y-4">
+                        <h4 class="text-base font-semibold">IPs Actuales</h4>
+                        <div id="ip-address-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
+                            <p class="text-text-secondary">Cargando...</p>
+                        </div>
+                        
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir IP de LAN</h4>
+                        <form id="add-ip-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                                <select name="interface" id="add-ip-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                                <span id="add-ip-interface-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <input type="text" name="address" id="add-ip-address" placeholder="IP/CIDR (ej. 192.168.1.1/24)" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-ip-address-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir IP</button>
+                        </form>
+                        
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Activar NAT (WAN)</h4>
+                        <form id="add-nat-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                                <select name="out-interface" id="add-nat-out-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                                <span id="add-nat-out-interface-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <input type="text" name="comment" value="NAT-WAN (µMonitor)" class="w-full bg-background border border-border-color rounded-md p-2">
+                            </div>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Activar NAT</button>
+                        </form>
+                        <div id="nat-rules-list" class="text-sm font-mono max-h-20 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Servidores PPPoE</h2></div>
+                    <div class="p-6 space-y-4">
+                        <h4 class="text-base font-semibold">Servidores Activos</h4>
+                        <div id="pppoe-server-list" class="text-sm space-y-1">
+                            <p class="text-text-secondary">Cargando...</p>
+                        </div>
+                        
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir Servidor PPPoE</h4>
+                        <form id="add-pppoe-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                                <input type="text" name="service_name" id="add-pppoe-service_name" placeholder="Nombre (ej. pppoe-main)" value="pppoe-server" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-pppoe-service_name-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <select name="interface" id="add-pppoe-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                                <span id="add-pppoe-interface-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir Servidor</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Colas Padre (HTB)</h2></div>
+                    <div class="p-6 space-y-4">
+                        <h4 class="text-base font-semibold">Colas Padre Existentes</h4>
+                        <div id="parent-queue-list-display" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
+                            <p class="text-text-secondary">Cargando...</p>
+                        </div>
+                        
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Crear Nueva Cola Padre</h4>
+                        <form id="add-parent-queue-form" class="space-y-4">
+                            <div>
+                                <label for="add-queue-name" class="block text-sm font-medium mb-1">Nombre de la Cola</label>
+                                <input type="text" name="name" id="add-queue-name" placeholder="ej. Clientes-Fibra" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-queue-name-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <label for="add-queue-max_limit" class="block text-sm font-medium mb-1">Límite Total (Subida/Bajada)</label>
+                                <input type="text" name="max_limit" id="add-queue-max_limit" placeholder="ej. 100M/500M (0 para ilimitado)" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-queue-max_limit-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Cola Padre</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Crear Plan de Servicio (Perfil PPPoE)</h2></div>
+                    <div class="p-6">
+                        <form id="add-plan-form" class="space-y-4">
+                            <div>
+                                <label for="add-plan-plan_name" class="block text-sm font-medium mb-1">Nombre del Plan (Perfil)</label>
+                                <input type="text" name="plan_name" id="add-plan-plan_name" placeholder="ej. Cobre, Plata, Oro" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-plan-plan_name-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <label for="add-plan-rate_limit" class="block text-sm font-medium mb-1">Límite de Tasa (Subida/Bajada)</label>
+                                <input type="text" name="rate_limit" id="add-plan-rate_limit" placeholder="ej. 2M/8M (0 para ilimitado)" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-plan-rate_limit-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <label for="add-plan-local_address" class="block text-sm font-medium mb-1">Gateway PPPoE (Local Address)</label>
+                                <input type="text" name="local_address" id="add-plan-local_address" placeholder="ej. 10.10.0.1" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-plan-local_address-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <label for="add-plan-pool_range" class="block text-sm font-medium mb-1">Red del Pool (Formato CIDR)</label>
+                                <input type="text" name="pool_range" id="add-plan-pool_range" placeholder="ej. 10.10.0.0/24" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                <span id="add-plan-pool_range-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <div>
+                                <label for="add-plan-parent_queue" class="block text-sm font-medium mb-1">Cola Padre (Opcional)</label>
+                                <select name="parent_queue" id="add-plan-parent_queue" class="w-full bg-background border border-border-color rounded-md p-2">
+                                    <option value="none">-- Sin Cola Padre --</option>
+                                    </select>
+                                <span id="add-plan-parent_queue-error" class="form-error hidden mt-1"></span>
+                            </div>
+                            <input type="hidden" name="comment" value="Managed by µMonitor">
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Plan (Perfil)</button>
+                        </form>
+                        </div>
+                </div>
+
+                <div class="bg-surface-1 rounded-lg border border-border-color">
+                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Configuración Existente</h2></div>
+                    <div class="p-6 space-y-4">
+                        <h4 class="text-base font-semibold">Perfiles PPPoE (Planes)</h4>
+                        <div id="ppp-profile-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
+                                                
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Pools de IP</h4>
+                        <div id="ip-pool-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-sistema" class="tab-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Redes (LAN/WAN)</h2></div>
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Backups</h2></div>
                 <div class="p-6 space-y-4">
-                    <h4 class="text-base font-semibold">IPs Actuales</h4>
-                    <div id="ip-address-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
-                        <p class="text-text-secondary">Cargando...</p>
+                    <form id="create-backup-form" class="space-y-2">
+                        <input type="text" id="backup-name" placeholder="nombre-del-backup" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                        <div class="flex gap-4">
+                            <button type="submit" data-type="backup" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Crear .backup</button>
+                            <button type="submit" data-type="export" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-orange hover:bg-orange-600">Crear .rsc (Export)</button>
+                        </div>
+                    </form>
+                    
+                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Archivos en el Router</h4>
+                    <div id="backup-files-list" class="text-sm space-y-1 font-mono max-h-60 overflow-y-auto">
+                        <p class="text-text-secondary">Cargando archivos...</p>
                     </div>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir IP de LAN</h4>
-                    <form id="add-ip-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                            <select name="interface" id="add-ip-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                            <span id="add-ip-interface-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <div>
-                            <input type="text" name="address" id="add-ip-address" placeholder="IP/CIDR (ej. 192.168.1.1/24)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-ip-address-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir IP</button>
-                    </form>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Activar NAT (WAN)</h4>
-                    <form id="add-nat-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                            <select name="out-interface" id="add-nat-out-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                            <span id="add-nat-out-interface-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <div>
-                            <input type="text" name="comment" value="NAT-WAN (µMonitor)" class="w-full bg-background border border-border-color rounded-md p-2">
-                        </div>
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Activar NAT</button>
-                    </form>
-                    <div id="nat-rules-list" class="text-sm font-mono max-h-20 overflow-y-auto"></div>
                 </div>
             </div>
 
             <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Servidores PPPoE</h2></div>
+                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Usuarios</h2></div>
                 <div class="p-6 space-y-4">
-                    <h4 class="text-base font-semibold">Servidores Activos</h4>
-                    <div id="pppoe-server-list" class="text-sm space-y-1">
-                        <p class="text-text-secondary">Cargando...</p>
+                    <h4 class="text-base font-semibold">Usuarios en el Router</h4>
+                    <div id="router-users-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
+                        <p class="text-text-secondary">Cargando usuarios...</p>
                     </div>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir Servidor PPPoE</h4>
-                    <form id="add-pppoe-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+
+                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir Usuario al Router</h4>
+                    <form id="add-router-user-form" class="space-y-4">
                         <div>
-                            <input type="text" name="service_name" id="add-pppoe-service_name" placeholder="Nombre (ej. pppoe-main)" value="pppoe-server" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-pppoe-service_name-error" class="form-error hidden mt-1"></span>
+                            <label for="app-user-select" class="block text-sm font-medium mb-1">Sugerir desde App</label>
+                            <select id="app-user-select" class="w-full bg-background border border-border-color rounded-md p-2">
+                                <option value="">Cargando usuarios de la App...</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="router-user-name" class="block text-sm font-medium mb-1">Username</label>
+                                <input type="text" id="router-user-name" placeholder="Nombre de usuario" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            </div>
+                            <div>
+                                <label for="router-user-group" class="block text-sm font-medium mb-1">Grupo</label>
+                                <select id="router-user-group" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                    <option value="full">Full (Admin)</option>
+                                    <option value="write">Write (Técnico)</option>
+                                    <option value="read">Read (Solo Lectura)</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
-                            <select name="interface" id="add-pppoe-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                            <span id="add-pppoe-interface-error" class="form-error hidden mt-1"></span>
+                            <label for="router-user-password" class="block text-sm font-medium mb-1">Password</label>
+                            <input type="password" id="router-user-password" placeholder="Contraseña para el router" class="w-full bg-background border border-border-color rounded-md p-2" required>
                         </div>
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir Servidor</button>
+                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Añadir Usuario</button>
+                        <div id="router-user-form-error" class="form-error-main text-danger text-sm hidden"></div>
                     </form>
                 </div>
             </div>
         </div>
-
-        <div class="space-y-6">
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Crear Plan de Servicio (PPPoE + Colas)</h2></div>
-                <div class="p-6">
-                    <form id="add-plan-form" class="space-y-4">
-                        <div>
-                            <input type="text" name="plan_name" id="add-plan-plan_name" placeholder="Nombre del Plan (ej. Oro, Plata)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-plan-plan_name-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <div>
-                            <input type="text" name="bandwidth" id="add-plan-bandwidth" placeholder="Ancho Banda (ej. 20M/100M)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-plan-bandwidth-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <div>
-                            <input type="text" name="local_address" id="add-plan-local_address" placeholder="Gateway PPPoE (ej. 10.10.0.1)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-plan-local_address-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <div>
-                            <input type="text" name="pool_range" id="add-plan-pool_range" placeholder="Rango de Pool (ej. 10.10.0.2-10.10.0.254)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            <span id="add-plan-pool_range-error" class="form-error hidden mt-1"></span>
-                        </div>
-                        <input type="hidden" name="comment" value="Managed by µMonitor">
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Plan Completo</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Configuración Existente</h2></div>
-                <div class="p-6 space-y-4">
-                    <h4 class="text-base font-semibold">Perfiles PPPoE (Planes)</h4>
-                    <div id="ppp-profile-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Colas Padre (Planes)</h4>
-                    <div id="parent-queue-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Pools de IP</h4>
-                    <div id="ip-pool-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
-                </div>
-            </div>
-
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">PPPoE Secrets (Usuarios)</h2></div>
-                <div class="p-6">
-                    <div id="pppoe-secrets-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
-                        <p class="text-text-secondary">Cargando secretos...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Conexiones Activas</h2></div>
-                <div class="p-6">
-                    <div id="pppoe-active-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
-                        <p class="text-text-secondary">Cargando conexiones...</p>
-                    </div>
-                </div>
-            </div>
-            
-            </div>
     </div>
     
     <div id="form-feedback" class="mt-4 text-sm text-center"></div>
@@ -152,6 +275,5 @@
 {% block scripts %}
 <script src="/static/js/utils/validators.js"></script>
 <script src="/static/js/utils/form-utils.js"></script>
-
 <script src="/static/js/router_details.js" defer></script>
 {% endblock %}

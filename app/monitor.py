@@ -2,73 +2,39 @@
 
 import time
 import logging
-import ssl 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from typing import Optional
 
 # --- IMPORTACIONES MODULARIZADAS ---
 from .core.ap_client import UbiquitiClient
-from routeros_api import RouterOsApiPool
-from routeros_api.api import RouterOsApi
-from .core.mikrotik_client import get_system_resources
+# ¡Importamos el nuevo servicio y sus errores!
+from .core.router_service import RouterService, RouterConnectionError, RouterCommandError, RouterNotProvisionedError
 from .core.alerter import send_telegram_alert
 
 from .db.settings_db import get_setting
-from .db.aps_db import (
-    get_ap_status, 
-    update_ap_status, 
-    get_enabled_aps_for_monitor,
-    get_ap_by_host_with_stats
-)
+from .db.aps_db import get_ap_status, update_ap_status, get_enabled_aps_for_monitor, get_ap_by_host_with_stats
 from .db.stats_db import save_full_snapshot
-from .db.router_db import (
-    get_router_status, 
-    update_router_status, 
-    get_enabled_routers_from_db,
-    get_router_by_host
-)
+from .db.router_db import get_router_status, update_router_status, get_enabled_routers_from_db, get_router_by_host
 
 # --- Constantes ---
 MAX_WORKERS = 10
 
-# --- FUNCIÓN CORREGIDA ---
+# --- FUNCIÓN REFACTORIZADA ---
 def process_router(router_config: dict):
     """
-    Realiza el proceso completo de verificación para un solo Router MikroTik.
+    Verifica un solo Router MikroTik utilizando el RouterService para consistencia.
     """
     host = router_config["host"]
     logging.info(f"--- Verificando Router en {host} ---")
     
-    pool: Optional[RouterOsApiPool] = None # <-- Usar un Pool
     status_data = None
     try:
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
+        # Usamos nuestro nuevo servicio centralizado
+        router_service = RouterService(host)
+        status_data = router_service.get_system_resources()
         
-        pool = RouterOsApiPool(
-            host=host,
-            # --- INICIO DE LA CORRECCIÓN ---
-            username=router_config["username"], # <-- Se llamaba 'user', ahora es 'username'
-            # --- FIN DE LA CORRECCIÓN ---
-            password=router_config["password"],
-            port=router_config["api_ssl_port"],
-            use_ssl=True,
-            ssl_context=ssl_context,
-            plaintext_login=True
-        )
-        api = pool.get_api()
-        status_data = get_system_resources(api)
-        
-    except Exception as e:
-        # El error que ves en el log ("unexpected keyword argument 'user'")
-        # ocurre aquí, en la línea de 'pool = RouterOsApiPool(...)'
-        logging.warning(f"No se pudo conectar al Router {host} vía API-SSL: {e}")
+    except (RouterConnectionError, RouterCommandError, RouterNotProvisionedError) as e:
+        logging.warning(f"No se pudo obtener el estado del Router {host}: {e}")
         status_data = None
-    finally:
-        if pool:
-            pool.disconnect()
     
     # --- El resto de la lógica no cambia ---
     previous_status = get_router_status(host)
@@ -78,6 +44,8 @@ def process_router(router_config: dict):
         hostname = status_data.get("name", host)
         logging.info(f"Estado de Router '{hostname}' ({host}): ONLINE")
         
+        # El servicio ya actualiza la DB, pero lo hacemos de nuevo
+        # para asegurarnos de que el 'last_status' y 'last_checked' queden registrados
         update_router_status(host, current_status, data=status_data)
         
         if previous_status == 'offline':
@@ -95,12 +63,12 @@ def process_router(router_config: dict):
             
             message = f"❌ *ALERTA: ROUTER CAÍDO*\n\nNo se pudo establecer conexión API-SSL con el Router *{hostname}* (`{host}`)."
             send_telegram_alert(message)
-# --- FIN DE CORRECCIÓN ---
 
 
 def process_ap(ap_config: dict):
     """
     Realiza el proceso completo de verificación para un solo AP.
+    (Esta función no cambia)
     """
     host = ap_config["host"]
     logging.info(f"--- Verificando AP en {host} ---")
@@ -183,6 +151,6 @@ def run_monitor():
             logging.info("Señal de interrupción recibida en el proceso de monitoreo.")
             break
         except Exception as e:
-            logging.exception(f"Ocurrió un error inesperado en el bugle principal: {e}")
+            logging.exception(f"Ocurrió un error inesperado en el bucle principal: {e}")
             logging.info("El sistema intentará continuar después de una breve pausa.")
             time.sleep(60)
