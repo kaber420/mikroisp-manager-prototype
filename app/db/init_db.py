@@ -25,15 +25,20 @@ def _setup_inventory_db():
         value TEXT
     )
     """)
-    # --- VALORES POR DEFECTO ACTUALIZADOS ---
+    # --- VALORES POR DEFECTO ACTUALIZADOS (FASE 6) ---
     default_settings = [
         ('telegram_bot_token', ''), ('telegram_chat_id', ''),
         ('default_monitor_interval', '300'), ('dashboard_refresh_interval', '60'),
-        ('suspension_run_hour', '02:00') # <-- NUEVA SETTING AÑADIDA
+        ('suspension_run_hour', '02:00'),
+        ('days_before_due', '5') # <-- NUEVO: Días de gracia/aviso
     ]
     cursor.executemany("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", default_settings)
     
-    # --- Tabla de Usuarios (Users) ---
+    # ... (Resto de tablas: users, zonas, aps, clients, cpes, routers, client_services, pagos) ...
+    # (Para abreviar, el resto del código de tablas se mantiene idéntico al archivo anterior)
+    # Asegúrate de copiar el resto del contenido de tu archivo original aquí si borras la DB
+    
+    # --- Tabla de Usuarios ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY, hashed_password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin',
@@ -42,55 +47,53 @@ def _setup_inventory_db():
     )
     """)
 
-    # --- Tablas de Zonas (Zonas) ---
+    # --- Tablas de Zonas ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS zonas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL UNIQUE
     )
     """)
-    
-    # Añadir nuevas columnas a 'zonas' de forma segura
     zona_columns = [col[1] for col in cursor.execute("PRAGMA table_info(zonas)").fetchall()]
-    if 'direccion' not in zona_columns:
-        cursor.execute("ALTER TABLE zonas ADD COLUMN direccion TEXT;")
-    if 'coordenadas_gps' not in zona_columns:
-        cursor.execute("ALTER TABLE zonas ADD COLUMN coordenadas_gps TEXT;")
-    if 'notas_generales' not in zona_columns:
-        cursor.execute("ALTER TABLE zonas ADD COLUMN notas_generales TEXT;") # Para Markdown
-    if 'notas_sensibles' not in zona_columns:
-        cursor.execute("ALTER TABLE zonas ADD COLUMN notas_sensibles TEXT;") # Para datos cifrados
+    if 'direccion' not in zona_columns: cursor.execute("ALTER TABLE zonas ADD COLUMN direccion TEXT;")
+    if 'coordenadas_gps' not in zona_columns: cursor.execute("ALTER TABLE zonas ADD COLUMN coordenadas_gps TEXT;")
+    if 'notas_generales' not in zona_columns: cursor.execute("ALTER TABLE zonas ADD COLUMN notas_generales TEXT;")
+    if 'notas_sensibles' not in zona_columns: cursor.execute("ALTER TABLE zonas ADD COLUMN notas_sensibles TEXT;")
 
-    # Nueva tabla para documentos/archivos
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS zona_documentos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        zona_id INTEGER NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, zona_id INTEGER NOT NULL,
         tipo TEXT NOT NULL CHECK(tipo IN ('image', 'document', 'diagram')),
-        nombre_original TEXT NOT NULL,
-        nombre_guardado TEXT NOT NULL UNIQUE,
-        descripcion TEXT,
-        creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+        nombre_original TEXT NOT NULL, nombre_guardado TEXT NOT NULL UNIQUE,
+        descripcion TEXT, creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE CASCADE
     );
     """)
 
-    # Nueva tabla para datos de infraestructura
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS zona_infraestructura (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        zona_id INTEGER NOT NULL UNIQUE,
-        direccion_ip_gestion TEXT,
-        gateway_predeterminado TEXT,
-        servidores_dns TEXT,
-        vlans_utilizadas TEXT,
-        equipos_criticos TEXT,
-        proximo_mantenimiento DATE,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, zona_id INTEGER NOT NULL UNIQUE,
+        direccion_ip_gestion TEXT, gateway_predeterminado TEXT, servidores_dns TEXT,
+        vlans_utilizadas TEXT, equipos_criticos TEXT, proximo_mantenimiento DATE,
         FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE CASCADE
     );
     """)
 
-    # --- Tablas de Dispositivos (APs, CPEs, Routers) ---
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS zona_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        zona_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT,
+        is_encrypted BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE CASCADE
+    );
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_zona_notes_zona_id ON zona_notes (zona_id);")
+
+    # --- Dispositivos y Clientes ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS aps (
         host TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, zona_id INTEGER,
@@ -100,17 +103,14 @@ def _setup_inventory_db():
     )
     """)
     
-    # --- TABLA DE CLIENTES (MODIFICADA) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, address TEXT, phone_number TEXT,
         whatsapp_number TEXT, email TEXT, telegram_contact TEXT, coordinates TEXT, notes TEXT,
-        service_status TEXT NOT NULL DEFAULT 'active', 
-        billing_day INTEGER,
+        service_status TEXT NOT NULL DEFAULT 'active', billing_day INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    # (Se eliminó 'suspension_method TEXT' de esta tabla)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS cpes (
@@ -129,20 +129,11 @@ def _setup_inventory_db():
     )
     """)
 
-    # --- INICIO DE NUEVAS TABLAS PARA CLIENTES Y FACTURACIÓN ---
-
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS client_services (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_id INTEGER NOT NULL,
-        router_host TEXT NOT NULL,
-        service_type TEXT NOT NULL DEFAULT 'pppoe',
-        pppoe_username TEXT UNIQUE,
-        router_secret_id TEXT,
-        profile_name TEXT,
-        suspension_method TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        
+        id INTEGER PRIMARY KEY AUTOINCREMENT, client_id INTEGER NOT NULL, router_host TEXT NOT NULL,
+        service_type TEXT NOT NULL DEFAULT 'pppoe', pppoe_username TEXT UNIQUE, router_secret_id TEXT,
+        profile_name TEXT, suspension_method TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
         FOREIGN KEY (router_host) REFERENCES routers(host) ON DELETE SET NULL
     )
@@ -150,37 +141,23 @@ def _setup_inventory_db():
     
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS pagos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_id INTEGER NOT NULL,
-        monto REAL NOT NULL,
-        fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
-        mes_correspondiente TEXT NOT NULL,
-        metodo_pago TEXT,
-        notas TEXT,
-        
+        id INTEGER PRIMARY KEY AUTOINCREMENT, client_id INTEGER NOT NULL, monto REAL NOT NULL,
+        fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP, mes_correspondiente TEXT NOT NULL,
+        metodo_pago TEXT, notas TEXT,
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
     )
     """)
 
-    # --- FIN DE NUEVAS TABLAS ---
-
-    # --- Índices ---
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_aps_zona ON aps (zona_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cpes_ip ON cpes (ip_address);")
-    
-    # --- INICIO DE ÍNDICES PARA LAS NUEVAS TABLAS ---
-    
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_services_client_id ON client_services (client_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_client_id ON pagos (client_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_mes ON pagos (client_id, mes_correspondiente);")
-
-    # --- FIN DE ÍNDICES ---
     
     conn.commit()
     conn.close()
 
 def _setup_stats_db():
-    # Esta función está perfecta, no requiere cambios.
     stats_db_file = _get_current_stats_db_file()
     stats_conn = sqlite3.connect(stats_db_file)
     stats_conn.row_factory = sqlite3.Row

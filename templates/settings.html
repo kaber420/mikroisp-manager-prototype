@@ -3,16 +3,14 @@
 {% block title %}Settings - µMonitor Pro{% endblock %}
 
 {% block content %}
-<!-- Contenido Principal -->
 <main class="flex-1 p-6 lg:p-8">
     <div class="max-w-4xl mx-auto">
         <h1 class="text-4xl font-bold mb-8">Global Settings</h1>
         <form id="settings-form" class="bg-surface-1 rounded-lg border border-border-color">
             <div class="p-8 space-y-8">
-                <!-- Sección de Alertas de Telegram -->
                 <div>
                     <h3 class="text-lg font-semibold text-text-primary">Telegram Alerts</h3>
-                    <p class="text-sm text-text-secondary mt-1">Configure your Telegram Bot to receive notifications for offline APs.</p>
+                    <p class="text-sm text-text-secondary mt-1">Configure your Telegram Bot to receive notifications.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
                     <div>
@@ -25,21 +23,35 @@
                     </div>
                 </div>
                 
-                <!-- Sección de Monitoreo -->
-                <div>
-                    <h3 class="text-lg font-semibold text-text-primary">Monitoring & Dashboard</h3>
-                    <p class="text-sm text-text-secondary mt-1">Set default values for services.</p>
+                <div class="pt-6 border-t border-border-color">
+                    <h3 class="text-lg font-semibold text-text-primary">Monitoring</h3>
+                    <p class="text-sm text-text-secondary mt-1">Service intervals.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
                     <div>
-                        <label for="default_monitor_interval" class="block text-sm font-medium mb-2">Default Monitor Interval (seconds)</label>
+                        <label for="default_monitor_interval" class="block text-sm font-medium mb-2">Monitor Interval (seconds)</label>
                         <input type="number" id="default_monitor_interval" name="default_monitor_interval" placeholder="e.g., 300" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <p class="text-xs text-text-secondary mt-2">The time the monitor waits between scans.</p>
                     </div>
                     <div>
-                        <label for="dashboard_refresh_interval" class="block text-sm font-medium mb-2">Dashboard Refresh Interval (seconds)</label>
+                        <label for="dashboard_refresh_interval" class="block text-sm font-medium mb-2">Dashboard Refresh (seconds)</label>
                         <input type="number" id="dashboard_refresh_interval" name="dashboard_refresh_interval" placeholder="e.g., 60" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <p class="text-xs text-text-secondary mt-2">How often the dashboard pages refresh data automatically.</p>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-border-color">
+                    <h3 class="text-lg font-semibold text-text-primary">Billing & Automation</h3>
+                    <p class="text-sm text-text-secondary mt-1">Configure automatic status updates.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
+                    <div>
+                        <label for="days_before_due" class="block text-sm font-medium mb-2">Days Before Due (Pending State)</label>
+                        <input type="number" id="days_before_due" name="days_before_due" placeholder="e.g., 5" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-2">Clients change to 'Pending' (Yellow) this many days before payment is due.</p>
+                    </div>
+                    <div>
+                        <label for="suspension_run_hour" class="block text-sm font-medium mb-2">Suspension Time</label>
+                        <input type="time" id="suspension_run_hour" name="suspension_run_hour" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-2">Daily time to check payments and update statuses.</p>
                     </div>
                 </div>
             </div>
@@ -51,6 +63,17 @@
                 </button>
             </div>
         </form>
+
+        <div class="mt-8 pt-6 border-t border-border-color">
+            <h3 class="text-lg font-semibold text-danger">Danger Zone / Testing</h3>
+            <div class="mt-4">
+                <button type="button" id="force-billing-btn" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-orange hover:bg-orange-600 flex items-center gap-2">
+                    <span class="material-symbols-outlined">update</span>
+                    Force Status Update Now
+                </button>
+                <p class="text-xs text-text-secondary mt-2">Manually runs the billing engine logic (Updates Active/Pending/Suspended statuses based on payments).</p>
+            </div>
+        </div>
     </div>
 </main>
 {% endblock %}

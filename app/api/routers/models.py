@@ -1,18 +1,26 @@
-# app/api/routers/models.py
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
-# --- Modelos Pydantic ---
-class RouterBase(BaseModel):
+# --- Existing Router Models ---
+class RouterResponse(BaseModel):
     host: str
     username: str
     zona_id: Optional[int] = None
-    api_port: int = 8728
-    api_ssl_port: int = 8729
-    is_enabled: bool = True
+    api_port: int
+    api_ssl_port: int
+    is_enabled: bool
+    hostname: Optional[str] = None
+    model: Optional[str] = None
+    firmware: Optional[str] = None
+    last_status: Optional[str] = None
 
-class RouterCreate(RouterBase):
+class RouterCreate(BaseModel):
+    host: str
+    username: str
     password: str
+    zona_id: Optional[int] = None
+    api_port: int
+    is_enabled: bool = True
 
 class RouterUpdate(BaseModel):
     username: Optional[str] = None
@@ -20,13 +28,6 @@ class RouterUpdate(BaseModel):
     zona_id: Optional[int] = None
     api_port: Optional[int] = None
     is_enabled: Optional[bool] = None
-
-class RouterResponse(RouterBase):
-    model_config = ConfigDict(from_attributes=True)
-    hostname: Optional[str] = None
-    model: Optional[str] = None
-    firmware: Optional[str] = None
-    last_status: Optional[str] = None
 
 class ProvisionRequest(BaseModel):
     new_api_user: str
@@ -36,41 +37,32 @@ class ProvisionResponse(BaseModel):
     status: str
     message: str
 
-class SystemResource(BaseModel):
-    version: Optional[str] = None
-    platform: Optional[str] = None
-    board_name: Optional[str] = Field(None, alias='board-name')
-    cpu: Optional[str] = None
-    name: Optional[str] = None
-    model_config = ConfigDict(extra='ignore', populate_by_name=True)
+class GenericActionResponse(BaseModel):
+    status: str
+    message: str
 
-class AddIpRequest(BaseModel):
-    interface: str
-    address: str
-    comment: str = "Managed by µMonitor"
-
-class AddNatRequest(BaseModel):
-    out_interface: str
-    comment: str = "NAT-WAN (µMonitor)"
-
-class AddPppoeServerRequest(BaseModel):
-    service_name: str
-    interface: str
-    default_profile: str = "default"
-
-class CreatePlanRequest(BaseModel):
-    plan_name: str
-    pool_range: str
-    local_address: str
-    rate_limit: str
-    parent_queue: str
-    comment: str = "Managed by µMonitor"
-
-class AddSimpleQueueRequest(BaseModel):
+# --- New VLAN and Bridge Models ---
+class VlanCreate(BaseModel):
     name: str
-    max_limit: str = Field(..., description="ej. 100M/500M")
-    comment: str = "Managed by µMonitor (Parent Queue)"
+    vlan_id: int
+    interface: str
+    comment: str
 
+class VlanUpdate(BaseModel):
+    name: str
+    vlan_id: int
+    interface: str
+
+class BridgeCreate(BaseModel):
+    name: str
+    ports: List[str]
+    comment: str
+
+class BridgeUpdate(BaseModel):
+    name: str
+    ports: List[str]
+
+# --- Models from config.py ---
 class RouterFullDetails(BaseModel):
     interfaces: List[Dict[str, Any]]
     ip_addresses: List[Dict[str, Any]]
@@ -79,12 +71,44 @@ class RouterFullDetails(BaseModel):
     ppp_profiles: List[Dict[str, Any]]
     simple_queues: List[Dict[str, Any]]
     ip_pools: List[Dict[str, Any]]
+    bridge_ports: List[Dict[str, Any]]
 
+class CreatePlanRequest(BaseModel):
+    plan_name: str
+    rate_limit: Optional[str] = None
+    parent_queue: Optional[str] = None
+    local_address: Optional[str] = None
+    comment: str
+    pool_range: Optional[str] = None
+    remote_address: Optional[str] = None
+
+class AddSimpleQueueRequest(BaseModel):
+    name: str
+    target: str
+    max_limit: str
+    dst: Optional[str] = None
+    comment: Optional[str] = None
+
+class AddIpRequest(BaseModel):
+    address: str
+    interface: str
+    comment: str
+
+class AddNatRequest(BaseModel):
+    out_interface: str
+    comment: str
+
+class AddPppoeServerRequest(BaseModel):
+    service_name: str
+    interface: str
+    default_profile: str
+
+# --- Models from pppoe.py ---
 class PppoeSecretCreate(BaseModel):
     username: str
     password: str
     profile: str
-    comment: str = ""
+    comment: Optional[str] = None
     service: str = 'pppoe'
 
 class PppoeSecretUpdate(BaseModel):
@@ -93,13 +117,38 @@ class PppoeSecretUpdate(BaseModel):
     comment: Optional[str] = None
 
 class PppoeSecretDisable(BaseModel):
-    disable: bool = True
+    disable: bool
+
+# --- Models from system.py ---
+class SystemResource(BaseModel):
+    uptime: Optional[str] = None
+    cpu_load: Optional[str] = Field(None, alias='cpu-load')
+    free_memory: Optional[str] = Field(None, alias='free-memory')
+    total_memory: Optional[str] = Field(None, alias='total-memory')
+    board_name: Optional[str] = Field(None, alias='board-name')
+    version: Optional[str] = None
+    name: Optional[str] = None # hostname
+    serial_number: Optional[str] = Field(None, alias='serial-number')
+    
+    # --- CAMPOS AÑADIDOS PARA QUE PASEN EL FILTRO! ---
+    platform: Optional[str] = None
+    cpu: Optional[str] = None
+    cpu_count: Optional[str] = Field(None, alias='cpu-count')
+    cpu_frequency: Optional[str] = Field(None, alias='cpu-frequency')
+    model: Optional[str] = None
+    nlevel: Optional[str] = None
+    voltage: Optional[str] = None
+    temperature: Optional[str] = None
+    
+    # Campos de disco normalizados
+    total_disk: Optional[str] = Field(None, alias='total-disk')
+    free_disk: Optional[str] = Field(None, alias='free-disk')
 
 class BackupCreateRequest(BaseModel):
-    backup_name: str
     backup_type: str # 'backup' or 'export'
+    backup_name: str
 
 class RouterUserCreate(BaseModel):
     username: str
     password: str
-    group: str # 'full', 'write', or 'read'
+    group: str # 'full', 'write', 'read'

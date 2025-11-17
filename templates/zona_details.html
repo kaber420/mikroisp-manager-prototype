@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css">
 <style>
     .tab-button.active { border-bottom-color: #3B82F6; color: #F1F5F9; }
     .tab-panel { display: none; }
@@ -13,8 +14,14 @@
 
 {% block content %}
 <main class="flex-1 p-6 lg:p-8">
-    <div class="mb-6"><a href="/zonas" class="text-primary hover:underline">Manage Zones</a><span class="mx-2 text-text-secondary">/</span><span id="breadcrumb-zonaname">Loading...</span></div>
-    <h1 id="main-zonaname" class="text-4xl font-bold mb-8">Loading Zone...</h1>
+    <div class="flex items-center gap-4 mb-8">
+        <a href="/zonas" title="Back to Zones" class="text-primary hover:opacity-75">
+            <svg xmlns="http://www.w.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
+        <h1 id="main-zonaname" class="text-4xl font-bold">Loading Zone...</h1>
+    </div>
 
     <div class="border-b border-border-color flex mb-6">
         <button type="button" data-tab="general" class="tab-button active py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">General Info</button>
@@ -104,21 +111,61 @@
 
     <!-- Pestaña 4: Notas y Diagramas -->
     <div id="tab-notes" class="tab-panel">
-        <div class="bg-surface-1 rounded-lg border border-border-color p-6">
-            <h3 class="text-lg font-semibold mb-4">Notes (Markdown & Diagrams)</h3>
-            <div id="notes-editor-container">
-                <p class="text-text-secondary">Editor will be implemented in Phase 2.</p>
-            </div>
-            <h3 class="text-lg font-semibold mt-8 mb-4">Sensitive Notes (Encrypted)</h3>
-             <div id="sensitive-notes-container">
-                <p class="text-text-secondary">Sensitive notes editor will be implemented in Phase 2.</p>
-            </div>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Notes</h3>
+            <button id="new-note-btn" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">New Note</button>
+        </div>
+        <div id="notes-list" class="space-y-4">
+            <!-- Notes will be rendered here by JavaScript -->
         </div>
     </div>
 
 </main>
+
+<!-- Note Modal -->
+<div id="note-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-4xl">
+        <div class="p-6 border-b border-border-color flex justify-between items-center">
+            <h4 id="note-modal-title" class="text-xl font-bold">New Note</h4>
+            <button id="close-note-modal-btn" class="text-text-secondary hover:text-text-primary">&times;</button>
+        </div>
+        <div class="p-6">
+            <form id="note-form">
+                <input type="hidden" id="note-id" name="id">
+                <div class="mb-4">
+                    <label for="note-title" class="block text-sm font-medium mb-1">Title</label>
+                    <input type="text" id="note-title" name="title" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                </div>
+                <div class="mb-4">
+                    <label for="note-content" class="block text-sm font-medium mb-1">Content (Markdown)</label>
+                    <div class="border border-border-color rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2">
+                            <div class="relative">
+                                <textarea id="note-editor" class="w-full h-96 bg-background p-4 border-r border-border-color rounded-l-lg" placeholder="Write your notes in Markdown..."></textarea>
+                            </div>
+                            <div id="note-preview" class="markdown-body p-4 bg-background overflow-auto h-96 rounded-r-lg">
+                                <p class="text-text-secondary">Markdown preview</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="note-is-encrypted" name="is_encrypted" class="rounded bg-background border-border-color text-primary focus:ring-primary">
+                        <span class="ml-2">Encrypt this note</span>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-note-btn" class="px-4 py-2 rounded-md text-sm font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="/static/js/zona_details.js" defer></script>
 {% endblock %}

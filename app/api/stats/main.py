@@ -1,33 +1,21 @@
-# app/api/stats_api.py
+# app/api/stats/main.py
 import sqlite3
 import os
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Optional
 
-from ..auth import User, get_current_active_user
-# --- CAMBIOS EN IMPORTACIONES DE DB ---
-from ..db.base import get_db_connection, get_stats_db_connection
-from ..db.cpes_db import get_all_cpes_globally # Reutilizamos una función ya creada
+# --- ¡IMPORTACIONES CORREGIDAS! (Ahora con '...') ---
+from ...auth import User, get_current_active_user
+from ...db.base import get_db_connection, get_stats_db_connection
+from ...db.cpes_db import get_all_cpes_globally # Reutilizamos una función ya creada
+
+# --- ¡IMPORTACIÓN CORREGIDA! (Ahora desde '.models') ---
+from .models import TopAP, TopCPE
 
 router = APIRouter()
 
-# --- Modelos Pydantic ---
-class TopAP(BaseModel):
-    hostname: Optional[str] = None
-    host: str
-    airtime_total_usage: Optional[int] = None
-    model_config = ConfigDict(from_attributes=True)
-
-class TopCPE(BaseModel):
-    cpe_hostname: Optional[str] = None
-    cpe_mac: str
-    ap_host: str
-    signal: Optional[int] = None
-    model_config = ConfigDict(from_attributes=True)
-
-# --- Dependencias de DB ---
+# --- Dependencias de DB (Lógica sin cambios) ---
 def get_inventory_db():
     conn = get_db_connection()
     try:
@@ -44,7 +32,7 @@ def get_stats_db():
         if conn:
             conn.close()
 
-# --- Endpoints de la API ---
+# --- Endpoints de la API (Lógica sin cambios) ---
 @router.get("/stats/top-aps-by-airtime", response_model=List[TopAP])
 def get_top_aps_by_airtime(
     limit: int = 5, 

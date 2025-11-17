@@ -1,7 +1,7 @@
-# app/core/alerter.py
+# app/utils/alerter.py
 
 import requests
-# --- CAMBIO: Importación relativa para apuntar a app/db/settings_db.py ---
+
 from ..db.settings_db import get_setting
 
 def send_telegram_alert(message: str):
@@ -16,7 +16,7 @@ def send_telegram_alert(message: str):
     chat_id = get_setting('telegram_chat_id')
 
     if not bot_token or not chat_id:
-        print("\n--- ALERTA (Simulada) ---")
+        print("\n--- ALERTA  ---")
         print("ADVERTENCIA: Token o Chat ID de Telegram no configurados en la base de datos.")
         print("La siguiente alerta solo se mostrará en la consola.")
         print(message)

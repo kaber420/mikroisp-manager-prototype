@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import List, Optional, Dict, Any
 
 # --- CORRECCIÓN DE IMPORTS ---
-from ...core.router_service import RouterService, get_router_service, RouterCommandError
+from ...services.router_service import RouterService, get_router_service, RouterCommandError # <-- LÍNEA CAMBIADA
 from ...auth import User, get_current_active_user
 # --- FIN DE CORRECCIÓN ---
 
@@ -56,3 +56,17 @@ def api_remove_pppoe_secret(secret_id: str, service: RouterService = Depends(get
         return
     except RouterCommandError as e:
         raise HTTPException(status_code=404, detail=f"No se pudo eliminar el 'secret': {e}")
+    
+@router.get("/pppoe/profiles", response_model=List[Dict[str, Any]])
+def api_get_pppoe_profiles(
+    service: RouterService = Depends(get_router_service),
+    user: User = Depends(get_current_active_user)
+):
+    """
+    Obtiene la lista de perfiles PPPoE (Planes) del router.
+    Usado por el frontend para poblar el select de planes.
+    """
+    try:
+        return service.get_ppp_profiles()
+    except RouterCommandError as e:
+        raise HTTPException(status_code=500, detail=str(e))

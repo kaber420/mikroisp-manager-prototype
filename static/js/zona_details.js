@@ -3,6 +3,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const zonaId = window.location.pathname.split('/').pop();
     let zonaData = null;
 
+    // --- Element Cache ---
+    const mainZoneName = document.getElementById('main-zonaname');
+    const noteModal = document.getElementById('note-modal');
+    const noteModalTitle = document.getElementById('note-modal-title');
+    const noteForm = document.getElementById('note-form');
+    const noteIdInput = document.getElementById('note-id');
+    const noteTitleInput = document.getElementById('note-title');
+    const noteEditor = document.getElementById('note-editor');
+    const notePreview = document.getElementById('note-preview');
+    const noteIsEncryptedInput = document.getElementById('note-is-encrypted');
+    const notesListContainer = document.getElementById('notes-list');
+
     // --- Tab Switching Logic ---
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabPanels = document.querySelectorAll('.tab-panel');
@@ -32,17 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
             renderGeneralInfo();
             renderInfraInfo();
             renderDocuments();
-            // renderNotes(); // Para Fase 2
+            renderNotes();
         } catch (error) {
-            document.getElementById('main-zonaname').textContent = 'Error';
+            mainZoneName.textContent = 'Error';
             alert(`Failed to load zone details: ${error.message}`);
         }
     }
 
     function renderGeneralInfo() {
         if (!zonaData) return;
-        document.getElementById('breadcrumb-zonaname').textContent = zonaData.nombre;
-        document.getElementById('main-zonaname').textContent = zonaData.nombre;
+        mainZoneName.textContent = zonaData.nombre;
         document.getElementById('zona-nombre').value = zonaData.nombre;
         document.getElementById('zona-coordenadas').value = zonaData.coordenadas_gps || '';
         document.getElementById('zona-direccion').value = zonaData.direccion || '';
@@ -95,8 +106,137 @@ document.addEventListener('DOMContentLoaded', () => {
         gallery.appendChild(grid);
     }
 
+    function renderNotes() {
+        if (!zonaData || !zonaData.notes) return;
+        notesListContainer.innerHTML = '';
 
-    // --- Form Submissions ---
+        if (zonaData.notes.length === 0) {
+            notesListContainer.innerHTML = '<p class="text-text-secondary">No notes for this zone yet.</p>';
+            return;
+        }
+
+        zonaData.notes.forEach(note => {
+            const card = document.createElement('div');
+            card.className = 'bg-surface-1 rounded-lg border border-border-color p-4 flex justify-between items-start';
+            
+            const contentPreview = note.is_encrypted 
+                ? '<p class="text-text-secondary italic">This note is encrypted.</p>'
+                : marked.parse(note.content.substring(0, 200) + (note.content.length > 200 ? '...' : ''));
+
+            card.innerHTML = `
+                <div class="prose prose-invert max-w-none">
+                    <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
+                        ${note.is_encrypted ? '<span class="material-symbols-outlined text-base">lock</span>' : ''}
+                        ${note.title}
+                    </h4>
+                    <div class="text-sm text-text-secondary">${contentPreview}</div>
+                </div>
+                <div class="flex-shrink-0 ml-4">
+                    <button data-note-id="${note.id}" class="edit-note-btn text-primary hover:underline text-sm">Edit</button>
+                    <button data-note-id="${note.id}" class="delete-note-btn text-danger hover:underline text-sm ml-2">Delete</button>
+                </div>
+            `;
+            notesListContainer.appendChild(card);
+        });
+    }
+
+    // --- Modal Logic ---
+    function openNoteModal(note = null) {
+        noteForm.reset();
+        if (note) {
+            noteModalTitle.textContent = 'Edit Note';
+            noteIdInput.value = note.id;
+            noteTitleInput.value = note.title;
+            noteEditor.value = note.content;
+            noteIsEncryptedInput.checked = note.is_encrypted;
+        } else {
+            noteModalTitle.textContent = 'New Note';
+            noteIdInput.value = '';
+        }
+        notePreview.innerHTML = marked.parse(noteEditor.value);
+        noteModal.classList.remove('hidden');
+        noteModal.classList.add('flex');
+    }
+
+    function closeNoteModal() {
+        noteModal.classList.add('hidden');
+        noteModal.classList.remove('flex');
+    }
+
+    // --- Event Listeners ---
+    document.getElementById('new-note-btn').addEventListener('click', () => openNoteModal());
+    document.getElementById('cancel-note-btn').addEventListener('click', closeNoteModal);
+    document.getElementById('close-note-modal-btn').addEventListener('click', closeNoteModal);
+
+    noteEditor.addEventListener('input', () => {
+        notePreview.innerHTML = marked.parse(noteEditor.value);
+    });
+
+    notesListContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-note-btn')) {
+            const noteId = parseInt(e.target.getAttribute('data-note-id'));
+            const noteToEdit = zonaData.notes.find(n => n.id === noteId);
+            openNoteModal(noteToEdit);
+        }
+        if (e.target.classList.contains('delete-note-btn')) {
+            const noteId = parseInt(e.target.getAttribute('data-note-id'));
+            if (confirm('Are you sure you want to delete this note?')) {
+                deleteNote(noteId);
+            }
+        }
+    });
+
+    // --- Form Submissions & API Calls ---
+    noteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const noteId = noteIdInput.value;
+        const data = {
+            title: noteTitleInput.value,
+            content: noteEditor.value,
+            is_encrypted: noteIsEncryptedInput.checked,
+        };
+
+        const url = noteId 
+            ? `${API_BASE_URL}/api/zonas/notes/${noteId}`
+            : `${API_BASE_URL}/api/zonas/${zonaId}/notes`;
+        const method = noteId ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Failed to save note');
+            }
+            
+            closeNoteModal();
+            await loadAllDetails(); // Reload all data to get the updated notes list
+            alert('Note saved successfully!');
+
+        } catch (error) {
+            alert(`Error saving note: ${error.message}`);
+        }
+    });
+
+    async function deleteNote(noteId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/zonas/notes/${noteId}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Failed to delete note');
+            }
+            await loadAllDetails();
+            alert('Note deleted successfully!');
+        } catch (error) {
+            alert(`Error deleting note: ${error.message}`);
+        }
+    }
+
     document.getElementById('form-general').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);

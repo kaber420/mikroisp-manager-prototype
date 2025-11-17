@@ -55,13 +55,15 @@ def run_setup_wizard():
     db_input = input(db_prompt).strip()
     db_file = db_input if db_input else existing_db_file
 
+    # --- INICIO DE MODIFICACIÓN ---
+
     # Generar claves de seguridad si no existen
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key:
         print("Generando nueva SECRET_KEY para tokens JWT...")
-        secret_key = secrets.token_hex(32)
+        secret_key = secrets.token_hex(32)  # <--- 1. AÑADIDO
     else:
-        print("Usando SECRET_KEY existente.")
+        print("Usando SECRET_KEY existente.") # <--- 2. AÑADIDO
 
     encrypt_key = os.getenv("ENCRYPTION_KEY")
     if not encrypt_key:
@@ -75,7 +77,7 @@ def run_setup_wizard():
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.write(f"# Archivo de configuracion de µMonitor Pro\n")
             f.write(f"# Clave para firmar tokens JWT\n")
-            f.write(f"SECRET_KEY=\"{secret_key}\"\n\n")
+            f.write(f"SECRET_KEY=\"{secret_key}\"\n\n")  # <--- 3. AÑADIDO
             f.write(f"# Clave para cifrar contraseñas de dispositivos\n")
             f.write(f"ENCRYPTION_KEY=\"{encrypt_key}\"\n\n")
             f.write(f"# Configuración del servidor\n")
@@ -87,6 +89,8 @@ def run_setup_wizard():
     except IOError as e:
         print(f"\nError Crítico: No se pudo escribir el archivo .env. Causa: {e}")
         sys.exit(1)
+        
+    # --- FIN DE MODIFICACIÓN ---
 
 def check_and_create_first_user(db_file, get_pass_hash_func):
     """

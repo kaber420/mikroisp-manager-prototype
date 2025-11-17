@@ -1,4 +1,5 @@
 # app/auth.py
+import os  # <--- 1. AÑADIDO
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,7 +12,12 @@ from pydantic import BaseModel
 from .db import users_db
 
 # --- Configuración de Seguridad ---
-SECRET_KEY = "a_very_secret_key_change_me_in_production"
+# --- 2. LÍNEAS MODIFICADAS ---
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    # Esto detendrá la app si la clave no está definida, evitando que corra en modo inseguro.
+    raise RuntimeError("FATAL: SECRET_KEY no está configurada. La aplicación no puede iniciar de forma segura.")
+    
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 

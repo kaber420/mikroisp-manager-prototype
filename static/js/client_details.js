@@ -197,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!clientData) throw new Error("Client not found in the list.");
 
             document.title = `${clientData.name} - Client Details`;
-            document.getElementById('breadcrumb-clientname').textContent = clientData.name;
             document.getElementById('main-clientname').textContent = clientData.name;
             document.getElementById('payment-month').value = new Date().toISOString().slice(0, 7);
 

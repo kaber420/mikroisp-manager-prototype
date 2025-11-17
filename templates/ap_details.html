@@ -6,36 +6,18 @@
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
 {% endblock %}
 
-{% block sidebar %}
-<aside class="w-64 bg-surface-1 flex-shrink-0 flex flex-col border-r border-border-color">
-    <div class="px-6 h-20 flex items-center border-b border-border-color">
-        <a href="/" class="flex items-center gap-3">
-            <span class="material-symbols-outlined text-primary text-3xl">router</span>
-            <h1 class="text-xl font-bold text-text-primary">µMonitor Pro</h1>
-        </a>
-    </div>
-    <div class="p-4 flex-grow">
-        <a href="/" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-2 text-text-secondary hover:text-text-primary font-semibold">
-            <span class="material-symbols-outlined">arrow_back</span>
-            <span class="text-sm">Back to Dashboard</span>
-        </a>
-    </div>
-    <div class="p-4 border-t border-border-color">
-        <a href="/docs" target="_blank" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-2">
-            <span class="material-symbols-outlined">api</span>
-            <span class="text-sm font-medium">API Docs</span>
-        </a>
-    </div>
-</aside>
-{% endblock %}
-
-
 {% block content %}
 <!-- Contenido Principal -->
 <main class="flex-1 p-6 lg:p-8">
-    <div class="mb-6"><a href="/" class="text-primary hover:underline">Dashboard</a><span class="mx-2 text-text-secondary">/</span><span id="breadcrumb-hostname">Loading...</span></div>
     <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <h1 id="main-hostname" class="text-4xl font-bold">Loading AP Details...</h1>
+        <div class="flex items-center gap-4">
+            <a href="/aps" title="Volver a APs" class="text-primary hover:opacity-75">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </a>
+            <h1 id="main-hostname" class="text-4xl font-bold">Loading AP Details...</h1>
+        </div>
         <div class="flex items-center gap-4">
             <button id="edit-ap-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover"><span class="material-symbols-outlined mr-2">edit</span><span>Edit</span></button>
             <button id="delete-ap-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-danger hover:bg-red-700"><span class="material-symbols-outlined mr-2">delete</span><span>Delete</span></button>

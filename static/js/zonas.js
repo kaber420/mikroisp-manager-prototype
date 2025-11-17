@@ -116,15 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="font-semibold text-text-primary">${zone.nombre}</p>
                     </div>
                     <div class="flex items-center gap-4">
-                        <button title="Rename Zone" class="edit-btn text-text-secondary hover:text-primary"><span class="material-symbols-outlined">edit</span></button>
-                        <button title="Delete Zone" class="delete-btn text-text-secondary hover:text-danger"><span class="material-symbols-outlined">delete</span></button>
-                        <button title="Manage Zone" class="manage-btn flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md bg-surface-2 hover:bg-border-color">
+                        <button title="Delete Zone" class="delete-btn text-text-secondary hover:text-danger">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                        <button title="Manage Zone" class="manage-btn flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-primary text-white hover:bg-primary-hover">
                             <span class="material-symbols-outlined text-base">settings</span>
                             Manage
                         </button>
                     </div>
                 `;
-                zoneRow.querySelector('.edit-btn').onclick = () => openZoneModal(zone); // Modal para renombrar rápido
+
                 zoneRow.querySelector('.delete-btn').onclick = () => handleDeleteZone(zone.id, zone.nombre);
                 zoneRow.querySelector('.manage-btn').onclick = () => {
                     window.location.href = `/zona/${zone.id}`; // Navega a la página de detalles

@@ -1,4 +1,4 @@
-# app/core/security.py
+# app/core/utils/security.py
 import os
 from cryptography.fernet import Fernet
 import logging

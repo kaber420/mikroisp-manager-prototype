@@ -318,7 +318,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!response.ok) throw new Error('AP not found');
                 const ap = await response.json();
                 document.title = `${ap.hostname || ap.host} - AP Details`;
-                document.getElementById('breadcrumb-hostname').textContent = ap.hostname || ap.host;
                 document.getElementById('main-hostname').textContent = ap.hostname || ap.host;
                 document.getElementById('detail-host').textContent = ap.host || 'N/A';
                 if (!diagnosticManager.intervalId) {
@@ -328,10 +327,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('detail-mac').textContent = ap.mac || 'N/A';
                 document.getElementById('detail-firmware').textContent = ap.firmware || 'N/A';
                 document.getElementById('detail-essid').textContent = ap.essid || 'N/A';
-                const zonesRes = await fetch(`${API_BASE_URL}/api/zonas`);
-                const zones = await zonesRes.json();
-                const zone = zones.find(z => z.id === ap.zona_id);
-                document.getElementById('detail-zona').textContent = zone ? zone.nombre : (ap.zona_nombre || 'N/A');
+                try {
+                    const zonesRes = await fetch(`${API_BASE_URL}/api/zonas`);
+                    const zones = await zonesRes.json();
+                    const zone = Array.isArray(zones) ? zones.find(z => z.id === ap.zona_id) : null;
+                    document.getElementById('detail-zona').textContent = zone ? zone.nombre : (ap.zona_nombre || 'N/A');
+                } catch (e) {
+                    console.warn("Could not load zones, displaying fallback name.", e);
+                    document.getElementById('detail-zona').textContent = ap.zona_nombre || 'N/A';
+                }
                 document.getElementById('detail-clients').textContent = ap.client_count != null ? ap.client_count : 'N/A';
                 document.getElementById('detail-noise').textContent = ap.noise_floor != null ? `${ap.noise_floor} dBm` : 'N/A';
                 document.getElementById('detail-frequency').textContent = ap.frequency != null ? `${ap.frequency} MHz / ${ap.chanbw} MHz` : 'N/A';

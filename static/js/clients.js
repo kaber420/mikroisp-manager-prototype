@@ -41,32 +41,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveServiceButton = document.getElementById('save-service-button');
     const cancelClientButtonTab2 = document.getElementById('cancel-client-button-tab2');
 
-    // --- ⭐ INICIO DE LA CORRECCIÓN: FUNCIÓN DE AYUDA ANTI-CACHÉ ⭐ ---
-    /**
-     * Realiza una petición fetch, parsea el JSON y maneja errores.
-     * Añade un parámetro "cache-busting" a las peticiones GET para evitar el caché del navegador.
-     * @param {string} url - La URL del endpoint de la API (ej. /api/clients)
-     * @param {object} options - Opciones para la petición fetch (method, body, etc.)
-     * @returns {Promise<any>}
-     */
     async function fetchJSON(url, options = {}) {
         const fullUrl = new URL(url, API_BASE_URL);
-        
-        // Añadir cache-busting para peticiones GET
         if (!options.method || options.method.toUpperCase() === 'GET') {
             fullUrl.searchParams.append('_', new Date().getTime());
         }
-
         const response = await fetch(fullUrl.toString(), options);
-
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
             throw new Error(errorData.detail || 'API Request Failed');
         }
-        // Devuelve null si la respuesta es 204 No Content (como en un DELETE exitoso)
         return response.status === 204 ? null : response.json();
     }
-    // --- ⭐ FIN DE LA CORRECCIÓN ---
 
     // --- Tab Logic ---
     function switchTab(tabName) {
@@ -76,18 +62,23 @@ document.addEventListener('DOMContentLoaded', () => {
         tabPanelService.classList.toggle('active', tabName === 'service');
     }
 
-    // --- Render Logic ---
+    // --- Render Logic (COLORES ACTUALIZADOS FASE 6) ---
     function getStatusBadgeClass(status) {
         switch (status) {
-            case 'active': return 'bg-success/20 text-success';
-            case 'suspended': return 'bg-warning/20 text-warning';
-            case 'cancelled': return 'bg-danger/20 text-danger';
-            default: return 'bg-text-secondary/20 text-text-secondary';
+            case 'active': 
+                return 'bg-success/20 text-success'; // Verde
+            case 'pendiente': 
+                return 'bg-warning/20 text-warning'; // Amarillo
+            case 'suspended': 
+                return 'bg-danger/20 text-danger';   // Rojo
+            case 'cancelled': 
+                return 'bg-surface-2 text-text-secondary'; // Gris
+            default: 
+                return 'bg-surface-2 text-text-secondary';
         }
     }
 
     function renderClients() {
-        // ... (esta función no necesita cambios, pero se beneficia de la carga de datos correcta)
         if (!tableBody) return;
         let filteredClients = allClients;
         if (currentFilters.serviceStatus !== 'all') {
@@ -104,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         tableBody.innerHTML = '';
         if (filteredClients.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-text-secondary">No clients.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-text-secondary">No clients found.</td></tr>`;
         } else {
             filteredClients.forEach(client => {
                 const row = document.createElement('tr');
@@ -112,8 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.onclick = () => { window.location.href = `/client/${client.id}`; };
                 
                 const statusClass = getStatusBadgeClass(client.service_status);
+                // Capitalizar primera letra
+                const statusText = client.service_status.charAt(0).toUpperCase() + client.service_status.slice(1);
+
                 row.innerHTML = `
-                    <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${client.service_status}</span></td>
+                    <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${statusText}</span></td>
                     <td class="px-6 py-4 font-semibold text-text-primary">${client.name}</td>
                     <td class="px-6 py-4 text-text-secondary">${client.address || 'N/A'}</td>
                     <td class="px-6 py-4 text-text-secondary font-mono">${client.phone_number || 'N/A'}</td>
@@ -130,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Data Loading Functions (Ahora usan fetchJSON) ---
+    // --- Data Loading Functions ---
     async function loadAllClients() {
         if (!tableBody) return;
         tableBody.style.filter = 'blur(4px)';
@@ -139,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-text-secondary">Loading clients...</td></tr>';
         }
         try {
-            allClients = await fetchJSON('/api/clients'); // ⭐ CORREGIDO
+            allClients = await fetchJSON('/api/clients');
             renderClients();
         } catch (error) {
             console.error("Error loading clients:", error);
@@ -154,18 +148,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- Modal Logic & Form Handlers (Ahora usan fetchJSON) ---
+    // --- Modal Logic & Form Handlers ---
     async function openClientModal(client = null) {
-        // ... (sin cambios en la lógica interna, pero las funciones que llama ahora usan fetchJSON)
         formUtils.resetModalForm('client-modal');
         switchTab('info');
         currentEditingClient = null;
+
+        // --- AÑADIR ESTO: Resetear visualización de password ---
+        const passInput = document.getElementById('pppoe-password');
+        const toggleBtn = document.getElementById('toggle-pppoe-password');
+        if (passInput) passInput.type = 'password';
+        if (toggleBtn) toggleBtn.querySelector('span').textContent = 'visibility_off';
+        // -------------------------------------------------------
+
+        // Resetear estado visual de la pestaña de servicio
+        pppoeServiceForm.classList.add('hidden');
+        suspensionWrapper.classList.add('hidden');
 
         if (client) {
             modalTitle.textContent = 'Edit Client';
             clientIdInput.value = client.id;
             currentEditingClient = client;
             
+            // Rellenar datos básicos del cliente
             document.getElementById('client-name').value = client.name;
             document.getElementById('client-email').value = client.email || '';
             document.getElementById('client-phone_number').value = client.phone_number || '';
@@ -177,11 +182,63 @@ document.addEventListener('DOMContentLoaded', () => {
             
             assignedCPEsSection.classList.remove('hidden');
             tabBtnService.disabled = false;
+            
+            // Cargas iniciales
             await loadAndRenderAssignedCPEs(client.id);
             await populateUnassignedCPEs();
-            pppoeUsername.value = client.name.trim().replace(/\s+/g, '.').toLowerCase();
-            await loadRoutersForSelect();
+            await loadRoutersForSelect(); // IMPORTANTE: Cargar routers antes de asignar valor
+
+            // --- NUEVA LÓGICA: Cargar y mostrar datos del servicio existente ---
+            try {
+                const services = await fetchJSON(`/api/clients/${client.id}/services`);
+                
+                if (services && services.length > 0) {
+                    // Tomamos el servicio más reciente
+                    const service = services[0]; 
+                    
+                    if (service.service_type === 'pppoe') {
+                        // 1. Activar UI de PPPoE
+                        serviceTypeSelect.value = 'pppoe';
+                        pppoeServiceForm.classList.remove('hidden');
+                        suspensionWrapper.classList.remove('hidden');
+                        // Asegurar que el select de suspensión tenga opciones
+                        if (suspensionSelect.options.length <= 1) {
+                             suspensionSelect.innerHTML = `<option value="pppoe_secret_disable">Disable Secret (Recommended)</option>`;
+                        }
+
+                        // 2. Rellenar campos guardados en DB local
+                        pppoeRouterSelect.value = service.router_host;
+                        pppoeUsername.value = service.pppoe_username;
+                        suspensionSelect.value = service.suspension_method;
+
+                        // 3. Cargar planes del router seleccionado y marcar el actual
+                        // Llamamos a la función existente que carga los perfiles
+                        await handleRouterSelectChange(); 
+                        pppoeProfileSelect.value = service.profile_name;
+
+                        // 4. Obtener la CONTRASEÑA real desde el Router (MikroTik)
+                        // Consultamos la API usando el username para traer el 'secret'
+                        try {
+                            const secrets = await fetchJSON(`/api/routers/${service.router_host}/pppoe/secrets?name=${encodeURIComponent(service.pppoe_username)}`);
+                            if (secrets && secrets.length > 0) {
+                                pppoePassword.value = secrets[0].password; // Rellenar password
+                            }
+                        } catch (err) {
+                            console.error("Error obteniendo password del router:", err);
+                            pppoePassword.placeholder = "Error retrieving password";
+                        }
+                    }
+                } else {
+                    // Si no tiene servicio, sugerir usuario por defecto como antes
+                    pppoeUsername.value = client.name.trim().replace(/\s+/g, '.').toLowerCase();
+                }
+            } catch (e) {
+                console.error("Error cargando servicios del cliente:", e);
+            }
+            // --- FIN NUEVA LÓGICA ---
+
         } else {
+            // Modo Crear Nuevo
             modalTitle.textContent = 'Add New Client';
             clientIdInput.value = '';
             assignedCPEsSection.classList.add('hidden');
@@ -213,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.keys(data).forEach(key => { if (data[key] === '') data[key] = null; });
         
         try {
-            const savedClient = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); // ⭐ CORREGIDO
+            const savedClient = await fetchJSON(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!isEditing) {
                 currentEditingClient = savedClient;
                 clientIdInput.value = savedClient.id;
@@ -226,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 closeClientModal();
             }
-            await loadAllClients(); // Forzar recarga de la lista
+            await loadAllClients();
         } catch (error) {
             clientFormError.textContent = `Error: ${error.message}`;
             clientFormError.classList.remove('hidden');
@@ -234,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function handleSavePppoeService() {
-        // ... (la lógica interna no cambia, pero usa fetchJSON)
         formUtils.clearFormErrors(pppoeServiceForm);
         let isValid = true;
         
@@ -252,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const secretData = { username, password, profile, comment: `client_id:${currentEditingClient.id}:${currentEditingClient.name}`, service: 'pppoe' };
-            const newSecret = await fetchJSON(`/api/routers/${host}/pppoe/secrets`, { // ⭐ CORREGIDO
+            const newSecret = await fetchJSON(`/api/routers/${host}/pppoe/secrets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(secretData)
@@ -268,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 profile_name: profile,
                 suspension_method: suspensionMethod
             };
-            await fetchJSON(`/api/clients/${currentEditingClient.id}/services`, { // ⭐ CORREGIDO
+            await fetchJSON(`/api/clients/${currentEditingClient.id}/services`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(serviceData)
@@ -285,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDeleteClient(clientId, clientName) {
         if (confirm(`Are you sure you want to delete client "${clientName}"?`)) {
             try {
-                await fetchJSON(`/api/clients/${clientId}`, { method: 'DELETE' }); // ⭐ CORREGIDO
+                await fetchJSON(`/api/clients/${clientId}`, { method: 'DELETE' });
                 await loadAllClients();
             } catch (error) {
                 alert(`Error: ${error.message}`);
@@ -293,10 +349,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- CPE and Network Service Helpers (Ahora usan fetchJSON) ---
+    // --- Network Service Helpers (Actualizado Fase 8) ---
     async function loadRoutersForSelect() {
         try {
-            const routers = await fetchJSON('/api/routers'); // ⭐ CORREGIDO
+            const routers = await fetchJSON('/api/routers');
             pppoeRouterSelect.innerHTML = '<option value="">Select a router...</option>';
             routers.filter(r => r.api_port === r.api_ssl_port).forEach(router => {
                 pppoeRouterSelect.innerHTML += `<option value="${router.host}">${router.hostname || router.host}</option>`;
@@ -310,33 +366,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const host = pppoeRouterSelect.value;
         pppoeProfileSelect.innerHTML = '<option value="">Loading...</option>';
         pppoeProfileSelect.disabled = true;
+        
         if (!host) {
             pppoeProfileSelect.innerHTML = '<option value="">Select a router first</option>';
             return;
         }
+        
         try {
-            const profiles = await fetchJSON(`/api/routers/${host}/read/ppp-profiles`); // ⭐ CORREGIDO
-            const managedProfiles = profiles.filter(p => p.comment && p.comment.includes('Managed by µMonitor'));
+            const profiles = await fetchJSON(`/api/routers/${host}/pppoe/profiles`);
+            
             pppoeProfileSelect.innerHTML = '<option value="">Select a plan...</option>';
-            if (managedProfiles.length === 0) {
-                pppoeProfileSelect.innerHTML = '<option value="" disabled>No managed plans on router</option>';
+            
+            if (profiles.length === 0) {
+                pppoeProfileSelect.innerHTML = '<option value="" disabled>No plans found on router</option>';
                 return;
             }
-            managedProfiles.forEach(p => {
-                pppoeProfileSelect.innerHTML += `<option value="${p.name}">${p.name} (${p.rate_limit || 'No Limit'})</option>`;
+            
+            profiles.forEach(p => {
+                const label = `${p.name} ${p['rate-limit'] ? '(' + p['rate-limit'] + ')' : ''}`;
+                pppoeProfileSelect.innerHTML += `<option value="${p.name}">${label}</option>`;
             });
+            
             pppoeProfileSelect.disabled = false;
+            
         } catch (error) {
+            console.error(error);
             pppoeProfileSelect.innerHTML = '<option value="">Error loading plans</option>';
         }
     }
     
-    // Las funciones de CPE también deben usar fetchJSON
     async function loadAndRenderAssignedCPEs(clientId) {
         const listDiv = document.getElementById('assigned-cpes-list');
         listDiv.innerHTML = '<p class="text-sm text-text-secondary">Loading...</p>';
         try {
-            const cpes = await fetchJSON(`/api/clients/${clientId}/cpes`); // ⭐ CORREGIDO
+            const cpes = await fetchJSON(`/api/clients/${clientId}/cpes`);
             listDiv.innerHTML = '';
             if (cpes.length === 0) {
                 listDiv.innerHTML = '<p class="text-sm text-text-secondary">No CPEs assigned.</p>';
@@ -358,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = document.getElementById('unassigned-cpe-select');
         select.innerHTML = '<option value="">Loading...</option>';
         try {
-            const cpes = await fetchJSON('/api/cpes/unassigned'); // ⭐ CORREGIDO
+            const cpes = await fetchJSON('/api/cpes/unassigned');
             select.innerHTML = '<option value="">Select a CPE to assign...</option>';
             if (cpes.length === 0) {
                 select.innerHTML = '<option value="" disabled>No unassigned CPEs available</option>';
@@ -377,10 +440,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const clientId = clientIdInput.value;
         if (!cpeMac || !clientId) return;
         try {
-            await fetchJSON(`/api/cpes/${cpeMac}/assign/${clientId}`, { method: 'POST' }); // ⭐ CORREGIDO
+            await fetchJSON(`/api/cpes/${cpeMac}/assign/${clientId}`, { method: 'POST' });
             await loadAndRenderAssignedCPEs(clientId);
             await populateUnassignedCPEs();
-            await loadAllClients(); // Actualiza el conteo en la tabla principal
+            await loadAllClients();
         } catch (error) {
             alert(`Error: ${error.message}`);
         }
@@ -389,10 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleUnassignCPE(cpeMac, clientId) {
         if (!confirm('Unassign this CPE?')) return;
         try {
-            await fetchJSON(`/api/cpes/${cpeMac}/unassign`, { method: 'POST' }); // ⭐ CORREGIDO
+            await fetchJSON(`/api/cpes/${cpeMac}/unassign`, { method: 'POST' });
             await loadAndRenderAssignedCPEs(clientId);
             await populateUnassignedCPEs();
-            await loadAllClients(); // Actualiza el conteo en la tabla principal
+            await loadAllClients();
         } catch (error) {
             alert(`Error: ${error.message}`);
         }
@@ -401,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auto-refresh
     async function initializeAutoRefresh() {
         try {
-            const settings = await fetchJSON('/api/settings'); // ⭐ CORREGIDO
+            const settings = await fetchJSON('/api/settings');
             const interval = parseInt(settings.dashboard_refresh_interval, 10);
             if (interval > 0) {
                 if (refreshIntervalId) clearInterval(refreshIntervalId);
@@ -442,6 +505,25 @@ document.addEventListener('DOMContentLoaded', () => {
             suspensionSelect.innerHTML = `<option value="pppoe_secret_disable">Disable Secret (Recommended)</option>`;
         }
     });
+
+    // Lógica para el botón de Ojo (Show/Hide Password)
+    const togglePassBtn = document.getElementById('toggle-pppoe-password');
+    const passInput = document.getElementById('pppoe-password');
+
+    if (togglePassBtn && passInput) {
+        togglePassBtn.addEventListener('click', () => {
+            const isPassword = passInput.getAttribute('type') === 'password';
+            
+            // Alternar tipo
+            passInput.setAttribute('type', isPassword ? 'text' : 'password');
+            
+            // Alternar icono
+            const icon = togglePassBtn.querySelector('span');
+            if (icon) {
+                icon.textContent = isPassword ? 'visibility' : 'visibility_off'; // visibility = ojo abierto
+            }
+        });
+    }
 
     loadAllClients();
     initializeAutoRefresh();

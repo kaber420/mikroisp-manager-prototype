@@ -18,12 +18,22 @@ def get_all_clients_with_cpe_count() -> List[Dict[str, Any]]:
     conn.close()
     return rows
 
+def get_client_by_id(client_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Obtiene un cliente específico por su ID.
+    Esencial para verificar el estado actual antes de reactivar.
+    """
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def create_client(client_data: Dict[str, Any]) -> Dict[str, Any]:
     """Crea un nuevo cliente en la base de datos y lo devuelve."""
     conn = get_db_connection()
     try:
         cursor = conn.execute(
-            # --- CAMPO 'suspension_method' ELIMINADO ---
             """INSERT INTO clients (name, address, phone_number, whatsapp_number, email, service_status, billing_day, notes, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
             (
@@ -91,7 +101,7 @@ def get_cpes_for_client(client_id: int) -> List[Dict[str, Any]]:
     conn.close()
     return rows
 
-# --- ¡NUEVAS FUNCIONES DE BASE DE DATOS PARA SERVICIOS! ---
+# --- Funciones de Servicios ---
 
 def get_client_service_by_id(service_id: int) -> Optional[Dict[str, Any]]:
     """Obtiene un servicio específico por su ID."""
@@ -126,7 +136,7 @@ def create_client_service(client_id: int, data: Dict[str, Any]) -> Dict[str, Any
         conn.commit()
     except sqlite3.Error as e:
         conn.rollback()
-        raise ValueError(str(e)) # Elevará el error (ej. UNIQUE constraint)
+        raise ValueError(str(e))
     finally:
         conn.close()
 
@@ -135,7 +145,6 @@ def create_client_service(client_id: int, data: Dict[str, Any]) -> Dict[str, Any
         raise ValueError("No se pudo recuperar el servicio después de la creación.")
     return new_service
 
-# --- ¡NUEVA FUNCIÓN AÑADIDA PARA EL MOTOR DE FACTURACIÓN! ---
 def get_active_clients_by_billing_day(day: int) -> List[Dict[str, Any]]:
     """Obtiene clientes 'activos' con un día de facturación específico."""
     conn = get_db_connection()

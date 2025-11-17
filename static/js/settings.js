@@ -5,9 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveStatus = document.getElementById('save-status');
     const saveButton = document.getElementById('save-button');
     const saveSpinner = document.getElementById('save-spinner');
+    const forceBillingBtn = document.getElementById('force-billing-btn');
 
     async function loadSettings() {
-        // Asegúrate de que estamos en la página correcta antes de ejecutar
         if (!settingsForm) return;
 
         try {
@@ -69,9 +69,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // --- Manejo del Botón de Fuerza (Fase 6) ---
+    if (forceBillingBtn) {
+        forceBillingBtn.addEventListener('click', async () => {
+            if(!confirm("Are you sure? This will update statuses (Active/Pending/Suspended) for ALL clients based on their payments.")) return;
+            
+            const originalText = forceBillingBtn.innerHTML;
+            forceBillingBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Processing...';
+            forceBillingBtn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/settings/force-billing`, { method: 'POST' });
+                if (!res.ok) throw new Error('Request failed');
+                const data = await res.json();
+                alert(`Done! \nProcessed: ${data.stats.processed}\nActive: ${data.stats.active || 0}\nPending: ${data.stats.pendiente || 0}\nSuspended: ${data.stats.suspended || 0}`);
+            } catch (e) {
+                alert("Error updating statuses: " + e.message);
+            } finally {
+                forceBillingBtn.innerHTML = originalText;
+                forceBillingBtn.disabled = false;
+            }
+        });
+    }
+    
     if (settingsForm) {
         settingsForm.addEventListener('submit', handleSettingsSubmit);
-        // Carga la configuración solo si el formulario existe
         loadSettings();
     }
 });

@@ -3,7 +3,7 @@ import sqlite3
 import os
 from typing import List, Dict, Any, Optional
 from .base import get_db_connection
-from ..core.security import encrypt_data, decrypt_data
+from ..utils.security import encrypt_data, decrypt_data # <-- LÍNEA CAMBIADA
 
 # --- Funciones de Zonas (CRUD Básico) ---
 
@@ -147,6 +147,79 @@ def delete_document(doc_id: int) -> int:
     
     conn = get_db_connection()
     cursor = conn.execute("DELETE FROM zona_documentos WHERE id = ?", (doc_id,))
+    rowcount = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rowcount
+
+# --- Funciones de Notas ---
+
+def create_note(zona_id: int, title: str, content: str, is_encrypted: bool) -> Dict[str, Any]:
+    conn = get_db_connection()
+    
+    final_content = encrypt_data(content) if is_encrypted else content
+    
+    cursor = conn.execute(
+        """INSERT INTO zona_notes (zona_id, title, content, is_encrypted)
+           VALUES (?, ?, ?, ?)""",
+        (zona_id, title, final_content, is_encrypted)
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    new_note = get_note_by_id(new_id)
+    if not new_note:
+        raise ValueError("Could not retrieve note after creation.")
+    return new_note
+
+def get_note_by_id(note_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM zona_notes WHERE id = ?", (note_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    
+    data = dict(row)
+    if data['is_encrypted'] and data['content']:
+        data['content'] = decrypt_data(data['content'])
+    return data
+
+def get_notes_by_zona_id(zona_id: int) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM zona_notes WHERE zona_id = ? ORDER BY updated_at DESC", (zona_id,))
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    for row in rows:
+        if row['is_encrypted'] and row['content']:
+            row['content'] = decrypt_data(row['content'])
+            
+    return rows
+
+def update_note(note_id: int, title: str, content: str, is_encrypted: bool) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    
+    final_content = encrypt_data(content) if is_encrypted else content
+    
+    cursor = conn.execute(
+        """UPDATE zona_notes SET title = ?, content = ?, is_encrypted = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?""",
+        (title, final_content, is_encrypted, note_id)
+    )
+    conn.commit()
+    
+    if cursor.rowcount == 0:
+        conn.close()
+        return None
+        
+    conn.close()
+    return get_note_by_id(note_id)
+
+def delete_note(note_id: int) -> int:
+    conn = get_db_connection()
+    cursor = conn.execute("DELETE FROM zona_notes WHERE id = ?", (note_id,))
     rowcount = cursor.rowcount
     conn.commit()
     conn.close()

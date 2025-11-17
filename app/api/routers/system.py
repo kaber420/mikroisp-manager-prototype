@@ -1,11 +1,12 @@
 # app/api/routers/system.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query # <-- AÑADIR Query
 from typing import List, Dict, Any
 
-from ...core.router_service import RouterService, get_router_service, RouterCommandError
+from ...services.router_service import RouterService, get_router_service, RouterCommandError # <-- LÍNEA CAMBIADA
 from ...auth import User, get_current_active_user
 from ...db import router_db
-from .models import SystemResource, BackupCreateRequest, RouterUserCreate
+# --- ¡IMPORTACIÓN MODIFICADA! ---
+from .models import SystemResource, BackupCreateRequest, RouterUserCreate, PppoeSecretDisable
 
 router = APIRouter()
 
@@ -78,3 +79,36 @@ def api_remove_router_user(user_id: str, service: RouterService = Depends(get_ro
         return
     except RouterCommandError as e:
         raise HTTPException(status_code=404, detail=f"No se pudo eliminar el usuario: {e}")
+
+# --- ¡ENDPOINTS MODIFICADOS AQUÍ! ---
+
+@router.patch("/interfaces/{interface_id:path}", status_code=status.HTTP_204_NO_CONTENT)
+def api_set_interface_status(
+    interface_id: str, 
+    status_update: PppoeSecretDisable,  # Reutilizamos este modelo (espera {"disable": true/false})
+    type: str = Query(..., description="El tipo de interfaz, ej. 'ether', 'bridge'"), # <-- AÑADIDO
+    service: RouterService = Depends(get_router_service), 
+    user: User = Depends(get_current_active_user)
+):
+    """Habilita o deshabilita una interfaz."""
+    try:
+        # Pasar el tipo al servicio
+        service.set_interface_status(interface_id, status_update.disable, interface_type=type) # <-- AÑADIDO
+        return
+    except (RouterCommandError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo actualizar la interfaz {interface_id}. Causa: {e}")
+
+@router.delete("/interfaces/{interface_id:path}", status_code=status.HTTP_204_NO_CONTENT)
+def api_remove_interface(
+    interface_id: str, 
+    type: str = Query(..., description="El tipo de interfaz, ej. 'vlan', 'bridge'"), # <-- AÑADIDO
+    service: RouterService = Depends(get_router_service), 
+    user: User = Depends(get_current_active_user)
+):
+    """Elimina una interfaz (VLAN, Bridge, etc.)."""
+    try:
+        # Pasar el tipo al servicio
+        service.remove_interface(interface_id, interface_type=type) # <-- AÑADIDO
+        return
+    except (RouterCommandError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo eliminar la interfaz {interface_id}. Causa: {e}")

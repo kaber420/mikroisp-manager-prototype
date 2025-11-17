@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 # --- CAMBIO: Importación actualizada para usar 'base.py' ---
 from .base import get_db_connection
 # --- CAMBIO: Importar las funciones de cifrado ---
-from ..core.security import encrypt_data, decrypt_data
+from ..utils.security import encrypt_data, decrypt_data
 
 # --- Funciones CRUD para la API ---
 

@@ -5,15 +5,12 @@
 {% block styles %}
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
 <style>
-    /* Estilos para las pestañas del modal */
     .tab-button.active {
-        border-bottom-color: #3B82F6; /* primary */
-        color: #F1F5F9; /* text-primary */
+        border-bottom-color: #3B82F6;
+        color: #F1F5F9;
     }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
-    
-    /* Cursor para la fila de la tabla */
     #client-table-body tr { cursor: pointer; }
 </style>
 {% endblock %}
@@ -32,8 +29,11 @@
         <div id="status-filter-buttons" class="flex gap-1 bg-surface-1 p-1 rounded-lg">
             <button data-status="all" class="filter-button px-3 py-1 text-sm font-medium rounded-md active">All</button>
             <button data-status="active" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Active</button>
+            <button data-status="pendiente" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Pending</button>
             <button data-status="suspended" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Suspended</button>
+            <button data-status="cancelled" class="filter-button px-3 py-1 text-sm font-medium rounded-md text-text-secondary hover:bg-surface-2">Cancelled</button>
         </div>
+        
         <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
             <input type="text" id="search-input" placeholder="Search by name, address, phone..." class="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md">
@@ -59,7 +59,6 @@
     </div>
 </main>
 
-<!-- Modal para Crear/Editar Cliente y Servicio -->
 <div id="client-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4 overflow-y-auto">
     <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-4xl border border-border-color my-auto">
         <div class="p-6 border-b border-border-color flex justify-between items-center">
@@ -72,12 +71,10 @@
             <button type="button" id="tab-btn-service" class="tab-button py-4 px-6 text-sm font-semibold text-text-secondary" disabled>Network Service</button>
         </div>
 
-        <!-- Pestaña 1: Información del Cliente -->
         <div id="tab-panel-info" class="tab-panel active">
             <form id="client-form">
                 <input type="hidden" id="client-id" name="id">
                 <div class="p-8 max-h-[60vh] overflow-y-auto space-y-6">
-                    <!-- ... campos del formulario de cliente ... -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="client-name" class="block text-sm font-medium mb-1">Full Name</label>
@@ -107,6 +104,7 @@
                                 <label for="client-service_status" class="block text-sm font-medium mb-1">Service Status</label>
                                 <select id="client-service_status" name="service_status" class="w-full bg-background border border-border-color rounded-md p-2">
                                     <option value="active">Active</option>
+                                    <option value="pendiente">Pending</option>
                                     <option value="suspended">Suspended</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
@@ -138,7 +136,6 @@
             </form>
         </div>
 
-        <!-- Pestaña 2: Servicio de Red -->
         <div id="tab-panel-service" class="tab-panel">
             <div class="p-8 max-h-[60vh] overflow-y-auto space-y-6">
                 <div>
@@ -171,7 +168,12 @@
                         </div>
                         <div>
                             <label for="pppoe-password" class="block text-sm font-medium mb-1">PPPoE Password</label>
-                            <input type="text" id="pppoe-password" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <div class="relative">
+                                <input type="password" id="pppoe-password" class="w-full bg-background border border-border-color rounded-md p-2 pr-10 focus:ring-primary focus:border-primary">
+                                <button type="button" id="toggle-pppoe-password" class="absolute inset-y-0 right-0 px-3 flex items-center text-text-secondary hover:text-text-primary focus:outline-none" title="Show/Hide Password">
+                                    <span class="material-symbols-outlined text-xl">visibility_off</span>
+                                </button>
+                            </div>
                             <span id="pppoe-password-error" class="form-error hidden mt-1"></span>
                         </div>
                     </div>
@@ -192,7 +194,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/utils/validators.js"></script>
-<script src="/static/js/utils/form-utils.js"></script>
+
 <script src="/static/js/clients.js" defer></script>
 {% endblock %}

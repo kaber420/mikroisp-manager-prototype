@@ -5,275 +5,562 @@
 {% block styles %}
 <link rel="stylesheet" href="/static/css/dashboard-transitions.css">
 <style>
-    .tab-button.active { border-bottom-color: #3B82F6; color: #F1F5F9; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    /* Estilos base del prototipo */
+    .card { 
+        background-color: #1E293B; 
+        border-radius: 0.5rem; 
+        padding: 1.5rem; 
+        margin-bottom: 1.5rem; 
+        border: 1px solid #334155;
+    }
+    .status-indicator {
+        display: inline-block; width: 10px; height: 10px;
+        border-radius: 50%; margin-right: 8px;
+    }
+    .status-online { background-color: #22C55E; }
+    .status-offline { background-color: #EF4444; }
+    
+    .tab-button {
+        padding: 0.5rem 1rem;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        font-weight: 600;
+    }
+    .tab-button.active {
+        border-bottom: 2px solid #3B82F6;
+        color: #F1F5F9; /* text-primary */
+    }
+    .tab-button:not(.active) {
+        color: #94A3B8; /* text-secondary */
+    }
+    .tab-button:hover:not(.active) {
+        border-bottom: 2px solid #334155; /* border-color */
+    }
+    
+    /* Stats Grid del Prototipo */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
+    }
+    .stat-card {
+        background-color: #334155; /* surface-2 */
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #F1F5F9; /* text-primary */
+    }
+    .stat-value-live {
+         color: #3B82F6; /* primary */
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        color: #94A3B8; /* text-secondary */
+    }
+    
+    /* Barras de Progreso */
+    .progress-bar {
+        height: 8px; background-color: #334155;
+        border-radius: 4px; overflow: hidden;
+    }
+    .progress-value {
+        height: 100%; background-color: #3B82F6;
+        border-radius: 4px; transition: width 0.3s ease;
+    }
+    
+    /* Tablas de Datos */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+        background-color: #334155; padding: 0.75rem;
+        text-align: left; font-weight: 600; color: #94A3B8;
+    }
+    .data-table td {
+        padding: 0.75rem; border-top: 1px solid #334155;
+    }
+    .data-table tr:hover { background-color: #334155; }
+    
+    /* --- NUEVO --- Estilos para botones de filtro de interfaz */
+    .interface-filter-btn {
+        background-color: #334155; /* surface-2 */
+        color: #94A3B8; /* text-secondary */
+        transition: all 0.2s;
+        padding: 0.25rem 0.75rem; /* py-1 px-3 */
+        font-size: 0.875rem; /* text-sm */
+        font-weight: 500; /* medium */
+        border-radius: 0.375rem; /* rounded-md */
+    }
+    .interface-filter-btn:hover {
+        background-color: #475569;
+    }
+    .interface-filter-btn.active {
+        background-color: #3B82F6; /* primary */
+        color: #F1F5F9; /* text-primary */
+        font-weight: 600;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<main class="flex-1 p-6 lg:p-8">
-    <div class="mb-6"><a href="/routers" class="text-primary hover:underline">Manage Routers</a><span class="mx-2 text-text-secondary">/</span><span id="breadcrumb-hostname">Loading...</span></div>
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <h1 id="main-hostname" class="text-4xl font-bold">Loading Router...</h1>
-    </div>
-    
-    <div class="border-b border-border-color flex mb-6">
-        <button type="button" data-tab="monitor" class="tab-button active py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Monitor</button>
-        <button type="button" data-tab="config" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Configuración de Red</button>
-        <button type="button" data-tab="sistema" class="tab-button py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-text-secondary hover:text-text-primary">Sistema y Seguridad</button>
-    </div>
+<main class="flex-1 p-6 lg:p-8" x-data="{ activeTab: 'overview' }">
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4">
+                <a href="/routers" title="Volver a Routers" class="text-primary hover:opacity-75">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <div>
+                    <h1 id="main-hostname" class="text-2xl font-bold flex items-center gap-3">
+                        Cargando...
+                    </h1>
+                    <div class="flex items-center mt-2 text-sm text-text-secondary">
+                        <span id="res-status-indicator" class="status-indicator status-offline"></span>
+                        <span id="res-status-text">Offline</span>
+                        <span class="mx-3">•</span>
+                        <span id="res-host">...</span>
+                        <span class="mx-3">•</span>
+                        <span id="res-firmware">RouterOS ...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <div id="tab-monitor" class="tab-panel active">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1 space-y-6">
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Recursos del Sistema</h2></div>
-                    <div class="p-6 space-y-2 text-sm">
-                        <div class="flex justify-between"><span>Modelo:</span><span id="res-model" class="font-semibold">Cargando...</span></div>
-                        <div class="flex justify-between"><span>Firmware:</span><span id="res-firmware" class="font-semibold">Cargando...</span></div>
-                        <div class="flex justify-between"><span>CPU:</span><span id="res-cpu" class="font-semibold">Cargando...</span></div>
+        <div classs="stats-grid mb-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="stat-card">
+                    <div id="res-uptime" class="stat-value">--</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <div class="stat-card">
+                    <div id="res-cpu-load" class="stat-value stat-value-live">0%</div>
+                    <div class="stat-label">CPU Load</div>
+                </div>
+                <div class="stat-card">
+                    <div id="res-memory-perc" class="stat-value stat-value-live">0%</div>
+                    <div class="stat-label">Memory</div>
+                </div>
+                <div class="stat-card">
+                    <div id="res-active-users" class="stat-value">0</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat-card">
+                    <div id="res-secrets" class="stat-value">0</div>
+                    <div class="stat-label">PPP Secrets</div>
+                </div>
+                <div class="stat-card">
+                    <div id="res-interfaces" class="stat-value">0</div>
+                    <div class="stat-label">Interfaces</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-b border-border-color mb-6">
+            <div class="flex overflow-x-auto">
+                <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'active' : ''" class="tab-button">Overview</button>
+                <button @click="activeTab = 'interfaces'" :class="activeTab === 'interfaces' ? 'active' : ''" class="tab-button">Interfaces</button>
+                <button @click="activeTab = 'network'" :class="activeTab === 'network' ? 'active' : ''" class="tab-button">Red / Firewall</button>
+                <button @click="activeTab = 'ppp'" :class="activeTab === 'ppp' ? 'active' : ''" class="tab-button">PPP</button>
+                <button @click="activeTab = 'queues'" :class="activeTab === 'queues' ? 'active' : ''" class="tab-button">Queues</button>
+                <button @click="activeTab = 'users'" :class="activeTab === 'users' ? 'active' : ''" class="tab-button">Users</button>
+                <button @click="activeTab = 'backup'" :class="activeTab === 'backup' ? 'active' : ''" class="tab-button">Backup</button>
+            </div>
+        </div>
+        <div x-show="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="lg:col-span-2">
+                <div class="card !mb-0">
+                    <h2 class="text-lg font-semibold mb-4">Router Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <div>
+                                <h3 class="text-sm font-medium text-text-secondary">Model</h3>
+                                <p id="info-model" class="text-text-primary">...</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-text-secondary">Firmware</h3>
+                                <p id="info-firmware" class="text-text-primary">...</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-text-secondary">Plataforma</h3>
+                                <p id="info-platform" class="text-text-primary">...</p>
+                            </div>
+                             <div>
+                                <h3 class="text-sm font-medium text-text-secondary">Serial Number</h3>
+                                <p id="info-serial" class="text-text-primary">...</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <h3 class="text-sm font-medium text-text-secondary">CPU</h3>
+                                <p id="info-cpu" class="text-text-primary">...</p>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-medium text-text-secondary">License</h3>
+                                <p id="info-license" class="text-text-primary">...</p>
+                            </div>
+                             <div>
+                                <h3 class="text-sm font-medium text-text-secondary">CPU Details</h3>
+                                <p id="info-cpu-details" class="text-text-primary">...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Conexiones Activas</h2></div>
-                    <div class="p-6">
-                        <div id="pppoe-active-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
-                            <p class="text-text-secondary">Cargando conexiones...</p>
+            <div>
+                <div class="card !mb-0">
+                    <h2 class="text-lg font-semibold mb-4">Resource Usage</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">CPU</span>
+                                <span id="res-cpu-text" class="text-sm">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div id="res-cpu-bar" class="progress-value" style="width: 0%"></div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">PPPoE Secrets (Usuarios)</h2></div>
-                    <div class="p-6">
-                        <div id="pppoe-secrets-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
-                            <p class="text-text-secondary">Cargando secretos...</p>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">Memory Usage</span>
+                                <span id="res-memory-text" class="text-sm">... / ...</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div id="res-memory-bar" class="progress-value" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">Disk Usage</span>
+                                <span id="res-disk-text" class="text-sm">... / ...</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div id="res-disk-bar" class="progress-value" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div id="health-info" class="border-t border-border-color pt-4">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium">Health</span>
+                                <div>
+                                    <span id="res-voltage" class="text-sm">-- V</span>
+                                    <span class="text-text-secondary mx-1">|</span>
+                                    <span id="res-temperature" class="text-sm">-- °C</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div id="tab-config" class="tab-panel">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="space-y-6">
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Redes (LAN/WAN)</h2></div>
-                    <div class="p-6 space-y-4">
-                        <h4 class="text-base font-semibold">IPs Actuales</h4>
-                        <div id="ip-address-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
-                            <p class="text-text-secondary">Cargando...</p>
-                        </div>
-                        
-                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir IP de LAN</h4>
-                        <form id="add-ip-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div>
-                                <select name="interface" id="add-ip-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                                <span id="add-ip-interface-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <input type="text" name="address" id="add-ip-address" placeholder="IP/CIDR (ej. 192.168.1.1/24)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-ip-address-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir IP</button>
-                        </form>
-                        
-                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Activar NAT (WAN)</h4>
-                        <form id="add-nat-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div>
-                                <select name="out-interface" id="add-nat-out-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                                <span id="add-nat-out-interface-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <input type="text" name="comment" value="NAT-WAN (µMonitor)" class="w-full bg-background border border-border-color rounded-md p-2">
-                            </div>
-                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Activar NAT</button>
-                        </form>
-                        <div id="nat-rules-list" class="text-sm font-mono max-h-20 overflow-y-auto"></div>
+        
+        <div x-show="activeTab === 'interfaces'" class="space-y-6">
+            <div class="card">
+                <h2 class="text-lg font-semibold mb-4">Network Interfaces</h2>
+                
+                <div class="flex justify-between items-center mb-4">
+                    <div id="interface-filter-buttons" class="flex items-center gap-2">
+                        <button data-filter="general" class="interface-filter-btn active">
+                            General
+                        </button>
+                        <button data-filter="ppp" class="interface-filter-btn">
+                            Túneles/PPP
+                        </button>
+                        <button data-filter="all" class="interface-filter-btn">
+                            Todas
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="add-vlan-btn" class="px-3 py-1 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Add VLAN</button>
+                        <button id="add-bridge-btn" class="px-3 py-1 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Add Bridge</button>
                     </div>
                 </div>
-
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Servidores PPPoE</h2></div>
-                    <div class="p-6 space-y-4">
-                        <h4 class="text-base font-semibold">Servidores Activos</h4>
-                        <div id="pppoe-server-list" class="text-sm space-y-1">
-                            <p class="text-text-secondary">Cargando...</p>
-                        </div>
-                        
-                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir Servidor PPPoE</h4>
-                        <form id="add-pppoe-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div>
-                                <input type="text" name="service_name" id="add-pppoe-service_name" placeholder="Nombre (ej. pppoe-main)" value="pppoe-server" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-pppoe-service_name-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <select name="interface" id="add-pppoe-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
-                                <span id="add-pppoe-interface-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir Servidor</button>
+                <div class="overflow-x-auto">
+                    <table id="interfaces-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1">Status</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>MAC Address</th>
+                                <th>IP Address</th>
+                                <th>RX Bytes</th>
+                                <th>TX Bytes</th>
+                                <th>Uptime</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="interfaces-table-body">
+                            </tbody>
+                        </table>
+                </div>
+            </div>
+            </div>
+        <div x-show="activeTab === 'network'" class="space-y-6">
+            <div class="card">
+                <h2 class="text-xl font-bold mb-4">Configuración de Red (IPs y NAT)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h4 class="text-base font-semibold">IPs Actuales</h4>
+                        <div id="ip-address-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">NAT Activo</h4>
+                        <div id="nat-rules-list" class="text-sm font-mono max-h-20 overflow-y-auto"></div>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="text-base font-semibold">Añadir IP</h4>
+                        <form id="add-ip-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <select name="interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                            <input type="text" name="address" placeholder="192.168.88.1/24" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir</button>
+                        </form>
+                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Activar NAT (WAN)</h4>
+                        <form id="add-nat-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <select name="out-interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                            <input type="text" name="comment" value="NAT-WAN (µMonitor)" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Activar</button>
                         </form>
                     </div>
                 </div>
             </div>
-
-            <div class="space-y-6">
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Colas Padre (HTB)</h2></div>
-                    <div class="p-6 space-y-4">
-                        <h4 class="text-base font-semibold">Colas Padre Existentes</h4>
-                        <div id="parent-queue-list-display" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
-                            <p class="text-text-secondary">Cargando...</p>
-                        </div>
-                        
-                        <h4 class="text-base font-semibold pt-4 border-t border-border-color">Crear Nueva Cola Padre</h4>
-                        <form id="add-parent-queue-form" class="space-y-4">
-                            <div>
-                                <label for="add-queue-name" class="block text-sm font-medium mb-1">Nombre de la Cola</label>
-                                <input type="text" name="name" id="add-queue-name" placeholder="ej. Clientes-Fibra" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-queue-name-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <label for="add-queue-max_limit" class="block text-sm font-medium mb-1">Límite Total (Subida/Bajada)</label>
-                                <input type="text" name="max_limit" id="add-queue-max_limit" placeholder="ej. 100M/500M (0 para ilimitado)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-queue-max_limit-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Cola Padre</button>
-                        </form>
+        </div>
+        <div x-show="activeTab === 'ppp'" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h2 class="text-lg font-semibold mb-4">PPPoE Secrets</h2>
+                    <div id="pppoe-secrets-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
+                        <p class="text-text-secondary">Cargando...</p>
                     </div>
                 </div>
-
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Crear Plan de Servicio (Perfil PPPoE)</h2></div>
-                    <div class="p-6">
-                        <form id="add-plan-form" class="space-y-4">
-                            <div>
-                                <label for="add-plan-plan_name" class="block text-sm font-medium mb-1">Nombre del Plan (Perfil)</label>
-                                <input type="text" name="plan_name" id="add-plan-plan_name" placeholder="ej. Cobre, Plata, Oro" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-plan-plan_name-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <label for="add-plan-rate_limit" class="block text-sm font-medium mb-1">Límite de Tasa (Subida/Bajada)</label>
-                                <input type="text" name="rate_limit" id="add-plan-rate_limit" placeholder="ej. 2M/8M (0 para ilimitado)" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-plan-rate_limit-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <label for="add-plan-local_address" class="block text-sm font-medium mb-1">Gateway PPPoE (Local Address)</label>
-                                <input type="text" name="local_address" id="add-plan-local_address" placeholder="ej. 10.10.0.1" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-plan-local_address-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <label for="add-plan-pool_range" class="block text-sm font-medium mb-1">Red del Pool (Formato CIDR)</label>
-                                <input type="text" name="pool_range" id="add-plan-pool_range" placeholder="ej. 10.10.0.0/24" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                <span id="add-plan-pool_range-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <div>
-                                <label for="add-plan-parent_queue" class="block text-sm font-medium mb-1">Cola Padre (Opcional)</label>
-                                <select name="parent_queue" id="add-plan-parent_queue" class="w-full bg-background border border-border-color rounded-md p-2">
-                                    <option value="none">-- Sin Cola Padre --</option>
-                                    </select>
-                                <span id="add-plan-parent_queue-error" class="form-error hidden mt-1"></span>
-                            </div>
-                            <input type="hidden" name="comment" value="Managed by µMonitor">
-                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Plan (Perfil)</button>
-                        </form>
-                        </div>
+                <div class="card">
+                    <h2 class="text-lg font-semibold mb-4">Conexiones Activas</h2>
+                    <div id="pppoe-active-list" class="text-sm space-y-1 max-h-60 overflow-y-auto">
+                         <p class="text-text-secondary">Cargando...</p>
+                    </div>
                 </div>
-
-                <div class="bg-surface-1 rounded-lg border border-border-color">
-                    <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Configuración Existente</h2></div>
-                    <div class="p-6 space-y-4">
-                        <h4 class="text-base font-semibold">Perfiles PPPoE (Planes)</h4>
-                        <div id="ppp-profile-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
-                                                
+            </div>
+            
+            <div class="card">
+                <h2 class="text-xl font-bold mb-4">Gestión de Planes (Perfiles)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h4 class="text-base font-semibold">Perfiles (Planes)</h4>
+                        <div id="ppp-profile-list" class="space-y-4 max-h-96 overflow-y-auto"></div>
                         <h4 class="text-base font-semibold pt-4 border-t border-border-color">Pools de IP</h4>
                         <div id="ip-pool-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="tab-sistema" class="tab-panel">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Backups</h2></div>
-                <div class="p-6 space-y-4">
-                    <form id="create-backup-form" class="space-y-2">
-                        <input type="text" id="backup-name" placeholder="nombre-del-backup" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                        <div class="flex gap-4">
-                            <button type="submit" data-type="backup" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Crear .backup</button>
-                            <button type="submit" data-type="export" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-orange hover:bg-orange-600">Crear .rsc (Export)</button>
-                        </div>
-                    </form>
-                    
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Archivos en el Router</h4>
-                    <div id="backup-files-list" class="text-sm space-y-1 font-mono max-h-60 overflow-y-auto">
-                        <p class="text-text-secondary">Cargando archivos...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-surface-1 rounded-lg border border-border-color">
-                <div class="p-6 border-b border-border-color"><h2 class="text-xl font-bold">Gestión de Usuarios</h2></div>
-                <div class="p-6 space-y-4">
-                    <h4 class="text-base font-semibold">Usuarios en el Router</h4>
-                    <div id="router-users-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto">
-                        <p class="text-text-secondary">Cargando usuarios...</p>
-                    </div>
-
-                    <h4 class="text-base font-semibold pt-4 border-t border-border-color">Añadir Usuario al Router</h4>
-                    <form id="add-router-user-form" class="space-y-4">
-                        <div>
-                            <label for="app-user-select" class="block text-sm font-medium mb-1">Sugerir desde App</label>
-                            <select id="app-user-select" class="w-full bg-background border border-border-color rounded-md p-2">
-                                <option value="">Cargando usuarios de la App...</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="router-user-name" class="block text-sm font-medium mb-1">Username</label>
-                                <input type="text" id="router-user-name" placeholder="Nombre de usuario" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                    <div class="space-y-4">
+                        <h4 class="text-base font-semibold">Crear/Editar Plan</h4>
+                        <form id="add-plan-form" class="space-y-3">
+                            <input type="hidden" name="plan_id" value="">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="add-plan-name" class="block text-xs font-medium text-text-secondary mb-1">Nombre del Plan</label>
+                                    <input type="text" id="add-plan-name" name="plan_name" placeholder="ej. Plan-5M" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                </div>
+                                <div>
+                                    <label for="add-plan-rate_limit" class="block text-xs font-medium text-text-secondary mb-1">Velocidad (Subida/Bajada)</label>
+                                    <input type="text" id="add-plan-rate_limit" name="rate_limit" placeholder="ej. 5M/10M" class="w-full bg-background border border-border-color rounded-md p-2">
+                                </div>
                             </div>
                             <div>
-                                <label for="router-user-group" class="block text-sm font-medium mb-1">Grupo</label>
-                                <select id="router-user-group" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                                    <option value="full">Full (Admin)</option>
-                                    <option value="write">Write (Técnico)</option>
-                                    <option value="read">Read (Solo Lectura)</option>
+                                <label for="add-plan-parent_queue" class="block text-xs font-medium text-text-secondary mb-1">Cola Padre</label>
+                                <select id="add-plan-parent_queue" name="parent_queue" class="w-full bg-background border border-border-color rounded-md p-2">
+                                    <option value="none">-- Sin Cola Padre --</option>
                                 </select>
                             </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="add-plan-local_address" class="block text-xs font-medium text-text-secondary mb-1">IP Local (Gateway)</label>
+                                    <input type="text" id="add-plan-local_address" name="local_address" placeholder="IP del router" class="w-full bg-background border border-border-color rounded-md p-2">
+                                </div>
+                                <div>
+                                    <label for="add-plan-pool-input" class="block text-xs font-medium text-text-secondary mb-1">Pool de IPs (Cliente)</label>
+                                    <input list="ip-pool-datalist" id="add-plan-pool-input" name="pool_input" class="w-full bg-background border border-border-color rounded-md p-2" placeholder="Selecciona un pool o escribe un rango nuevo..." required>
+                                    <datalist id="ip-pool-datalist"></datalist>
+                                </div>
+                            </div>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Guardar Plan</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                 <h2 class="text-xl font-bold mb-4">Servidores PPPoE</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-base font-semibold">Servidores Activos</h4>
+                        <div id="pppoe-server-list" class="text-sm space-y-1"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-base font-semibold">Añadir Servidor</h4>
+                        <form id="add-pppoe-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input type="text" name="service_name" placeholder="Nombre (ej. pppoe-lan)" value="pppoe-server" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            <select name="interface" class="w-full bg-background border border-border-color rounded-md p-2 interface-select" required></select>
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Añadir</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="activeTab === 'queues'" class="card">
+            <h2 class="text-xl font-bold mb-4">Gestión de Colas Padre</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-base font-semibold">Colas Padre Existentes</h4>
+                    <div id="parent-queue-list-display" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
+                </div>
+                <div class="space-y-4">
+                    <h4 class="text-base font-semibold">Crear Cola Padre</h4>
+                    <form id="add-parent-queue-form" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="q-name" class="block text-xs font-medium text-text-secondary mb-1">Nombre de Cola</label>
+                                <input type="text" id="q-name" name="name" placeholder="ej. Total-Clientes" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            </div>
+                            <div>
+                                <label for="q-max-limit" class="block text-xs font-medium text-text-secondary mb-1">Límite Máximo</label>
+                                <input type="text" id="q-max-limit" name="max_limit" placeholder="ej. 100M/100M" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            </div>
                         </div>
-                        <div>
-                            <label for="router-user-password" class="block text-sm font-medium mb-1">Password</label>
-                            <input type="password" id="router-user-password" placeholder="Contraseña para el router" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="q-target" class="block text-xs font-medium text-text-secondary mb-1">Target (Red o Interfaz)</label>
+                                <input type="text" id="q-target" name="target" placeholder="ej. 192.168.10.0/24 o ether1" class="w-full bg-background border border-border-color rounded-md p-2" list="q-target-datalist" required>
+                                <datalist id="q-target-datalist"></datalist>
+                            </div>
+                            <div>
+                                <label for="q-dst" class="block text-xs font-medium text-text-secondary mb-1">Destination (Opcional)</label>
+                                <input type="text" id="q-dst" name="dst" placeholder="ej. 0.0.0.0/0" class="w-full bg-background border border-border-color rounded-md p-2">
+                            </div>
                         </div>
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Añadir Usuario</button>
-                        <div id="router-user-form-error" class="form-error-main text-danger text-sm hidden"></div>
+                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Cola Padre</button>
                     </form>
                 </div>
             </div>
         </div>
+
+        <div x-show="activeTab === 'users'" class="card">
+            <h2 class="text-xl font-bold mb-4">Usuarios Router</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-base font-semibold">Usuarios Actuales</h4>
+                    <div id="router-users-list" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
+                </div>
+                <div>
+                    <h4 class="text-base font-semibold">Añadir Usuario</h4>
+                    <form id="add-router-user-form" class="space-y-3">
+                        <select id="app-user-select" class="w-full bg-background border border-border-color rounded-md p-2">
+                            <option value="">Copiar de App...</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="router-user-name" placeholder="Usuario" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                            <select id="router-user-group" class="w-full bg-background border border-border-color rounded-md p-2">
+                                <option value="full">Full</option>
+                                <option value="write">Write</option>
+                                <option value="read">Read</option>
+                            </select>
+                        </div>
+                        <input type="password" id="router-user-password" placeholder="Contraseña" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Añadir Usuario</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="activeTab === 'backup'" class="card">
+            <h2 class="text-xl font-bold mb-4">Gestión de Backups</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-base font-semibold">Archivos Existentes</h4>
+                    <div id="backup-files-list" class="text-sm space-y-1 font-mono max-h-60 overflow-y-auto"></div>
+                </div>
+                <div>
+                    <h4 class="text-base font-semibold">Crear Backup</h4>
+                    <form id="create-backup-form" class="space-y-2">
+                        <input type="text" id="backup-name" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                        <div class="flex gap-4">
+                            <button type="submit" data-type="backup" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">Crear .backup</button>
+                            <button type="submit" data-type="export" class="flex-1 h-10 px-4 text-sm font-bold text-white rounded-lg bg-orange hover:bg-orange-600">Crear .rsc</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="form-feedback" class="mt-4 text-sm text-center"></div>
+
     </div>
-    
-    <div id="form-feedback" class="mt-4 text-sm text-center"></div>
 </main>
 
-<template id="interface-select-template">
-    <select class="w-full bg-background border border-border-color rounded-md p-2 interface-select">
-        <option value="">Cargando interfaces...</option>
-    </select>
-</template>
+<!-- VLAN Modal -->
+<div id="vlan-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 border-b border-border-color flex justify-between items-center">
+            <h4 id="vlan-modal-title" class="text-xl font-bold">Add VLAN</h4>
+            <button id="close-vlan-modal-btn" class="text-text-secondary hover:text-text-primary">&times;</button>
+        </div>
+        <div class="p-6">
+            <form id="vlan-form">
+                <input type="hidden" id="vlan-id" name="id">
+                <div class="mb-4">
+                    <label for="vlan-name" class="block text-sm font-medium mb-1">VLAN Name</label>
+                    <input type="text" id="vlan-name" name="name" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                </div>
+                <div class="mb-4">
+                    <label for="vlan-id-input" class="block text-sm font-medium mb-1">VLAN ID</label>
+                    <input type="number" id="vlan-id-input" name="vlan-id" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                </div>
+                <div class="mb-4">
+                    <label for="vlan-interface" class="block text-sm font-medium mb-1">Interface</label>
+                    <select id="vlan-interface" name="interface" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-vlan-btn" class="px-4 py-2 rounded-md text-sm font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save VLAN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bridge Modal -->
+<div id="bridge-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 border-b border-border-color flex justify-between items-center">
+            <h4 id="bridge-modal-title" class="text-xl font-bold">Add Bridge</h4>
+            <button id="close-bridge-modal-btn" class="text-text-secondary hover:text-text-primary">&times;</button>
+        </div>
+        <div class="p-6">
+            <form id="bridge-form">
+                <input type="hidden" id="bridge-id" name="id">
+                <div class="mb-4">
+                    <label for="bridge-name" class="block text-sm font-medium mb-1">Bridge Name</label>
+                    <input type="text" id="bridge-name" name="name" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Ports</label>
+                    <div id="bridge-ports" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto bg-background p-2 rounded-md border border-border-color">
+                        <!-- Checkboxes will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancel-bridge-btn" class="px-4 py-2 rounded-md text-sm font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Bridge</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/utils/validators.js"></script>
-<script src="/static/js/utils/form-utils.js"></script>
-<script src="/static/js/router_details.js" defer></script>
+<script type="module" src="/static/js/router_details/main.js" defer></script>
 {% endblock %}

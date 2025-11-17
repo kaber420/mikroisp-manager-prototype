@@ -7,7 +7,7 @@ import logging
 
 from .base import get_db_connection
 # --- CAMBIO: Importar las funciones de cifrado ---
-from ..core.security import encrypt_data, decrypt_data
+from ..utils.security import encrypt_data, decrypt_data # <-- LÍNEA CAMBIADA
 
 # --- NUEVA FUNCIÓN (Movida desde monitor.py y mejorada) ---
 def get_enabled_aps_for_monitor() -> list:

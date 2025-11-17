@@ -2,13 +2,12 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import List, Dict, Any
 
-from ...core.router_service import RouterService, get_router_service, RouterCommandError
+from ...services.router_service import RouterService, get_router_service, RouterCommandError # <-- LÍNEA CAMBIADA
 from ...auth import User, get_current_active_user
 from .models import (
     RouterFullDetails, CreatePlanRequest, AddSimpleQueueRequest,
     AddIpRequest, AddNatRequest, AddPppoeServerRequest
 )
-
 router = APIRouter()
 
 @router.get("/full-details", response_model=RouterFullDetails)
@@ -40,7 +39,11 @@ def write_add_simple_queue(data: AddSimpleQueueRequest, service: RouterService =
 @router.post("/write/add-ip", response_model=Dict[str, Any])
 def write_add_ip_address(data: AddIpRequest, service: RouterService = Depends(get_router_service), user: User = Depends(get_current_active_user)):
     try:
-        api_response = service.add_ip_address(**data.model_dump())
+        api_response = service.add_ip_address(
+            address=data.address,
+            interface=data.interface,
+            comment=data.comment
+        )
         return {"status": "success", "message": "IP address added.", "data": api_response}
     except RouterCommandError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -4,14 +4,15 @@ from typing import List
 import ssl
 from routeros_api import RouterOsApiPool
 
-# --- CORRECCIÓN DE IMPORTS ---
 from ...auth import User, get_current_active_user
 from ...db import router_db
-from ...core.mikrotik_client import provision_router_api_ssl
-# --- FIN DE CORRECCIÓN ---
+
+# --- CAMBIO PRINCIPAL: Importación actualizada a la nueva estructura modular ---
+# Antes: from ...utils.device_clients.mikrotik_client import provision_router_api_ssl 
+from ...utils.device_clients.mikrotik.system import provision_router_api_ssl 
 
 from .models import RouterResponse, RouterCreate, RouterUpdate, ProvisionRequest, ProvisionResponse
-from . import config, pppoe, system
+from . import config, pppoe, system, interfaces
 
 router = APIRouter()
 
@@ -53,7 +54,7 @@ def delete_router(host: str, current_user: User = Depends(get_current_active_use
         raise HTTPException(status_code=404, detail="Router not found to delete.")
     return
 
-# --- Endpoint de Aprovisionamiento (Lógica especial que no usa el servicio SSL) ---
+# --- Endpoint de Aprovisionamiento ---
 @router.post("/routers/{host}/provision", response_model=ProvisionResponse)
 def provision_router_endpoint(host: str, data: ProvisionRequest, current_user: User = Depends(get_current_active_user)):
     creds = router_db.get_router_by_host(host)
@@ -62,16 +63,32 @@ def provision_router_endpoint(host: str, data: ProvisionRequest, current_user: U
         
     admin_pool: RouterOsApiPool = None
     try:
-        admin_pool = RouterOsApiPool(creds['host'], username=creds['username'], password=creds['password'], port=creds['api_port'], use_ssl=False, plaintext_login=True)
+        # Conexión inicial insegura (sin SSL) para configurar el SSL
+        admin_pool = RouterOsApiPool(
+            creds['host'], 
+            username=creds['username'], 
+            password=creds['password'], 
+            port=creds['api_port'], 
+            use_ssl=False, 
+            plaintext_login=True
+        )
         api = admin_pool.get_api()
+        
+        # Llamada a la función modularizada
         result = provision_router_api_ssl(api, host, data.new_api_user, data.new_api_password)
         
         if result["status"] == "error":
             raise HTTPException(status_code=500, detail=result["message"])
             
-        update_data = {"username": data.new_api_user, "password": data.new_api_password, "api_port": creds['api_ssl_port']}
+        # Actualizar DB con el nuevo usuario y puerto seguro
+        update_data = {
+            "username": data.new_api_user, 
+            "password": data.new_api_password, 
+            "api_port": creds['api_ssl_port']
+        }
         router_db.update_router_in_db(host, update_data)
         return result
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -83,3 +100,4 @@ def provision_router_endpoint(host: str, data: ProvisionRequest, current_user: U
 router.include_router(config.router, prefix="/routers/{host}")
 router.include_router(pppoe.router, prefix="/routers/{host}")
 router.include_router(system.router, prefix="/routers/{host}")
+router.include_router(interfaces.router, prefix="/routers/{host}")
