@@ -6,12 +6,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex-1 flex flex-col">
+<div x-data="apManager()" x-cloak @destroy="destroy()" class="flex-1 flex flex-col min-w-0">
+
     <main class="flex-1 p-6 lg:p-8 bg-background">
-      
+
         <div class="flex items-center justify-between mb-8">
             <h1 id="dashboard-title" class="text-4xl font-bold">Manage Access Points</h1>
-            <button id="add-ap-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
+            <button @click="openModal()"
+                class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
                 <span class="material-symbols-outlined mr-2">add</span>
                 <span>Add AP</span>
             </button>
@@ -20,81 +22,192 @@
         <div class="bg-surface-1 rounded-lg border border-border-color">
             <div class="px-6 py-4 border-b border-border-color flex flex-wrap gap-4 items-center justify-between">
                 <h2 class="text-xl font-bold">All Access Points</h2>
-                
+
                 <div class="flex items-center gap-4">
-                    <select id="zone-filter-select" class="w-full sm:w-48 bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary text-sm">
+                    <select x-model="selectedZone"
+                        class="w-full sm:w-48 bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary text-sm">
                         <option value="">All Zones</option>
-                        </select>
+                        <template x-for="zone in allZones" :key="zone.id">
+                            <option :value="zone.id" x-text="zone.nombre"></option>
+                        </template>
+                    </select>
                     <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
-                        <input type="text" id="search-input" placeholder="Search by name, IP, or MAC..." class="w-full sm:w-64 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md focus:ring-primary focus:border-primary">
+                        <span
+                            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-lg">search</span>
+                        <input type="text" x-model.debounce.300ms="searchQuery"
+                            placeholder="Search by name, IP, or MAC..."
+                            class="w-full sm:w-64 pl-10 pr-4 py-2 bg-background border border-border-color rounded-md focus:ring-primary focus:border-primary">
                     </div>
                 </div>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-2">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Hostname</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Zone</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">IP Address</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Clients</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Airtime</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Status</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Hostname</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Zone</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                IP Address</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Clients</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Airtime</th>
+                            <th
+                                class="px-6 py-3 text-right text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                                Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="ap-table-body" class="divide-y divide-border-color">
+                    <tbody class="divide-y divide-border-color">
+                        <template x-if="isLoading">
+                            <tr>
+                                <td colspan="7" class="text-center p-8 text-text-secondary">Loading network data...</td>
+                            </tr>
+                        </template>
+                        <template x-if="!isLoading && filteredAps.length === 0">
+                            <tr>
+                                <td colspan="7" class="text-center p-8 text-text-secondary">No Access Points match the
+                                    current filter.</td>
+                            </tr>
+                        </template>
+                        <template x-for="ap in filteredAps" :key="ap.host">
+                            <tr @click="window.location.href = `/ap/${encodeURIComponent(ap.host)}`"
+                                class="hover:bg-surface-2 cursor-pointer transition-colors duration-200">
+                                <td class="px-6 py-4 whitespace-nowrap" x-html="renderStatusBadge(ap.last_status)"></td>
+                                <td class="px-6 py-4 whitespace-nowrap font-semibold text-text-primary"
+                                    x-text="ap.hostname || 'N/A'"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-text-secondary"
+                                    x-text="getZoneName(ap.zona_id)"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-text-secondary font-mono" x-text="ap.host">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-text-primary font-semibold"
+                                    x-text="ap.client_count != null ? ap.client_count : 'N/A'"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-text-primary font-semibold"
+                                    x-text="ap.airtime_total_usage != null ? `${(ap.airtime_total_usage / 10.0).toFixed(1)}%` : 'N/A'">
+                                </td>
+
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <button @click.stop="openModal(ap)"
+                                        class="text-text-secondary hover:text-primary p-1 mr-2" title="Edit AP">
+                                        <span class="material-symbols-outlined">edit</span>
+                                    </button>
+                                    <button @click.stop="deleteAp(ap)" class="text-text-secondary hover:text-danger p-1"
+                                        title="Delete AP">
+                                        <span class="material-symbols-outlined">delete</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
         </div>
     </main>
-</div>
 
-<div id="add-ap-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
-    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-2xl border border-border-color">
-        <form id="add-ap-form">
-            <div class="p-6 border-b border-border-color"><h3 class="text-2xl font-bold">Add New Access Point</h3></div>
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="host" class="block text-sm font-medium mb-1">Host (IP or Hostname)</label>
-                        <input type="text" id="host" name="host" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <span id="host-error" class="form-error hidden mt-1"></span>
+    <div x-show="isModalOpen" x-cloak
+        class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div @click.away="closeModal()"
+            class="bg-surface-1 rounded-lg shadow-xl w-full max-w-2xl border border-border-color">
+            <form @submit.prevent="saveAp()">
+                <div class="p-6 border-b border-border-color flex justify-between items-center">
+                    <h3 class="text-2xl font-bold" x-text="isEditing ? 'Edit Access Point' : 'Add New Access Point'">
+                    </h3>
+                    <button type="button" @click="closeModal()"
+                        class="text-text-secondary hover:text-primary text-2xl">&times;</button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="host" class="block text-sm font-medium mb-1">Host (IP or Hostname)</label>
+                            <input type="text" id="host" x-model="currentAp.host" :disabled="isEditing"
+                                :class="{'opacity-50 cursor-not-allowed': isEditing}" required
+                                class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        </div>
+                        <div>
+                            <label for="zona_id" class="block text-sm font-medium mb-1">Zone</label>
+                            <select id="zona_id" x-model="currentAp.zona_id" required
+                                class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                                <option value="" disabled>Select a zone...</option>
+                                <template x-for="zone in allZones" :key="zone.id">
+                                    <option :value="zone.id" x-text="zone.nombre"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="username" class="block text-sm font-medium mb-1">Username</label>
+                            <input type="text" id="username" x-model="currentAp.username" required
+                                class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium mb-1">Password</label>
+                            <input type="password" id="password" x-model="currentAp.password" :required="!isEditing"
+                                :placeholder="isEditing ? 'Leave blank to keep current' : 'Required'"
+                                class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        </div>
+                    </div>
+
                     <div>
-                        <label for="zona_id" class="block text-sm font-medium mb-1">Zone</label>
-                        <select id="zona_id" name="zona_id" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary"></select>
-                        <span id="zona_id-error" class="form-error hidden mt-1"></span>
+                        <label for="monitor_interval" class="block text-sm font-medium mb-1">Monitor Interval
+                            (seconds)</label>
+                        <input type="number" id="monitor_interval" x-model="currentAp.monitor_interval"
+                            placeholder="Default (Global)"
+                            class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-1">Leave empty to use the global default setting.</p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-border-color">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-text-secondary">Connection Check</span>
+
+                            <button type="button" @click="testConnection()"
+                                :disabled="isTesting || !currentAp.host || !currentAp.username"
+                                class="text-xs flex items-center gap-1 px-3 py-1.5 rounded border border-border-color hover:bg-surface-2 disabled:opacity-50 transition-colors">
+                                <span x-show="isTesting"
+                                    class="material-symbols-outlined text-sm animate-spin">sync</span>
+                                <span x-show="!isTesting" class="material-symbols-outlined text-sm">network_check</span>
+                                <span x-text="isTesting ? 'Testing...' : 'Test Connection'"></span>
+                            </button>
+                        </div>
+
+                        <div x-show="testMessage" x-transition class="text-sm p-2 rounded bg-opacity-20 border" :class="{
+                                'bg-success border-success text-success': testStatus === 'success',
+                                'bg-danger border-danger text-danger': testStatus === 'error'
+                             }">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-base"
+                                    x-text="testStatus === 'success' ? 'check_circle' : 'error'"></span>
+                                <span x-text="testMessage"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="error" x-text="error" class="text-danger text-sm mt-2"></div>
+
+                    <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4 mt-4 -mx-6 -mb-6">
+                        <button type="button" @click="closeModal()"
+                            class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
+                        <button type="submit"
+                            class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover"
+                            x-text="isEditing ? 'Save Changes' : 'Save Access Point'"></button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="username" class="block text-sm font-medium mb-1">Username</label>
-                        <input type="text" id="username" name="username" required value="ubnt" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <span id="username-error" class="form-error hidden mt-1"></span>
-                    </div>
-                    <div>
-                        <label for="password" class="block text-sm font-medium mb-1">Password</label>
-                        <input type="password" id="password" name="password" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <span id="password-error" class="form-error hidden mt-1"></span>
-                    </div>
-                </div>
-                <div id="form-error-main" class="form-error-main text-danger text-sm hidden"></div>
-            </div>
-            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
-                <button type="button" id="cancel-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
-                <button type="submit" id="save-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save Access Point</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/utils/validators.js"></script>
-<script src="/static/js/utils/form-utils.js"></script>
-
 <script src="/static/js/aps.js" defer></script>
 {% endblock %}

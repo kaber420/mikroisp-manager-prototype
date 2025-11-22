@@ -63,18 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = '<p class="text-text-secondary text-center font-semibold">This client has no network services configured.</p>';
                 return;
             }
-            
+
             const pppoeService = services.find(s => s.service_type === 'pppoe');
             if (!pppoeService) {
-                 container.innerHTML = '<p class="text-text-secondary text-center font-semibold">Service is not PPPoE.</p>';
-                 return;
+                container.innerHTML = '<p class="text-text-secondary text-center font-semibold">Service is not PPPoE.</p>';
+                return;
             }
 
             const username = pppoeService.pppoe_username;
             const routerHost = pppoeService.router_host;
-            
+
             const secretData = await fetchJSON(`/api/routers/${routerHost}/pppoe/secrets?name=${encodeURIComponent(username)}`);
-            
+
             let statusHtml = '';
             if (!secretData || secretData.length === 0) {
                 statusHtml = `
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             } else {
                 const secret = secretData[0];
-                const isDisabled = secret.disabled === 'true'; 
+                const isDisabled = secret.disabled === 'true';
                 const statusClass = isDisabled ? 'text-danger' : 'text-success';
                 const statusText = isDisabled ? 'Suspended' : 'Active';
 
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = '<p class="text-text-secondary">No payments registered for this client.</p>';
                 return;
             }
-            
+
             container.innerHTML = '';
             payments.forEach(payment => {
                 const paymentEl = document.createElement('div');
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 container.appendChild(paymentEl);
             });
-            
+
         } catch (e) {
             container.innerHTML = `<p class="text-danger">Error loading history: ${e.message}</p>`;
         }
@@ -145,14 +145,14 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const errorEl = document.getElementById('payment-form-error');
         errorEl.classList.add('hidden');
-        
+
         const data = {
             monto: parseFloat(document.getElementById('payment-amount').value),
             mes_correspondiente: document.getElementById('payment-month').value,
             metodo_pago: document.getElementById('payment-method').value,
             notas: document.getElementById('payment-notes').value,
         };
-        
+
         if (!data.monto || data.monto <= 0) {
             errorEl.textContent = 'Amount must be a valid number.';
             errorEl.classList.remove('hidden');
@@ -170,15 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
+
             alert('Payment registered and service reactivated successfully!');
             document.getElementById('register-payment-form').reset();
             document.getElementById('payment-month').value = new Date().toISOString().slice(0, 7);
-            
+
             // Reload both dynamic parts of the page
             loadServiceStatus();
             loadPaymentHistory();
-            
+
         } catch (error) {
             errorEl.textContent = `Error: ${error.message}`;
             errorEl.classList.remove('hidden');
@@ -188,26 +188,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Carga Inicial de la Página ---
     async function initializePage() {
         try {
-            // No podemos obtener los detalles del cliente desde la API de /clients,
-            // así que necesitamos un endpoint que no existe o construirlo.
-            // Por ahora, cargaremos la lista y filtraremos.
-            const allClients = await fetchJSON(`/api/clients`);
-            clientData = allClients.find(c => c.id == clientId);
+            // --- CÓDIGO OPTIMIZADO ---
+            // Solicitamos directamente el cliente por ID a la API
+            clientData = await fetchJSON(`/api/clients/${clientId}`);
 
-            if (!clientData) throw new Error("Client not found in the list.");
+            if (!clientData) throw new Error("Client not found.");
 
             document.title = `${clientData.name} - Client Details`;
             document.getElementById('main-clientname').textContent = clientData.name;
-            document.getElementById('payment-month').value = new Date().toISOString().slice(0, 7);
+            // Pre-llenar fecha
+            const monthInput = document.getElementById('payment-month');
+            if (monthInput) {
+                monthInput.value = new Date().toISOString().slice(0, 7);
+            }
 
             renderClientInfo(clientData);
+
+            // Las otras cargas siguen igual, ya que dependen del ID
             loadServiceStatus();
             loadPaymentHistory();
-            
-            document.getElementById('register-payment-form').addEventListener('submit', handleRegisterPayment);
+
+            const paymentForm = document.getElementById('register-payment-form');
+            if (paymentForm) {
+                paymentForm.addEventListener('submit', handleRegisterPayment);
+            }
 
         } catch (error) {
-            document.getElementById('main-clientname').textContent = 'Error Loading Client';
+            console.error(error);
+            const nameEl = document.getElementById('main-clientname');
+            if (nameEl) nameEl.textContent = 'Error Loading Client';
             alert(`Failed to initialize page: ${error.message}`);
         }
     }

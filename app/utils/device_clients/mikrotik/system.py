@@ -101,9 +101,30 @@ def get_system_resources(api: RouterOsApi) -> Dict[str, Any]:
 
     # From /system/health
     if health_info:
-        health = health_info[0]
-        data['voltage'] = health.get('voltage')
-        data['temperature'] = health.get('temperature')
+        # MikroTik devuelve health en dos formatos posibles:
+        # Formato A (Plano): [{'voltage': '24.5', 'temperature': '30'}]
+        # Formato B (Modular/Tu Router): [{'name': 'voltage', 'value': '24'}, {'name': 'cpu-temperature', 'value': '53'}]
+        
+        for sensor in health_info:
+            # Lógica para Formato B (Modular - Tu caso)
+            if 'name' in sensor and 'value' in sensor:
+                name = sensor['name']
+                value = sensor['value']
+                
+                if name == 'voltage':
+                    data['voltage'] = value
+                elif name == 'temperature':
+                    data['temperature'] = value
+                elif name in ['cpu-temperature', 'cpu-temp']:
+                    data['cpu-temperature'] = value
+            
+            # Lógica para Formato A (Plano - Otros routers)
+            else:
+                # Puede venir todo en el primer elemento o separado, iteramos igual
+                if 'voltage' in sensor: data['voltage'] = sensor['voltage']
+                if 'temperature' in sensor: data['temperature'] = sensor['temperature']
+                if 'cpu-temperature' in sensor: data['cpu-temperature'] = sensor['cpu-temperature']
+                if 'cpu-temp' in sensor: data['cpu-temperature'] = sensor['cpu-temp']
 
     return data
 

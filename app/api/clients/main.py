@@ -31,6 +31,17 @@ def api_get_all_clients(
 ):
     return service.get_all_clients()
 
+@router.get("/clients/{client_id}", response_model=Client)
+def api_get_client(
+    client_id: int, 
+    service: ClientManagerService = Depends(get_client_service),
+    current_user: User = Depends(get_current_active_user)
+):
+    try:
+        return service.get_client_by_id(client_id)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 @router.post("/clients", response_model=Client, status_code=status.HTTP_201_CREATED)
 def api_create_client(
     client: ClientCreate, 

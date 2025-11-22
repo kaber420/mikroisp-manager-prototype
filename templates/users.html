@@ -3,92 +3,136 @@
 {% block title %}Manage Users - µMonitor Pro{% endblock %}
 
 {% block content %}
-<main class="flex-1 p-6 lg:p-8">
+<main class="flex-1 p-6 lg:p-8" x-data="userManager()" x-init="init()">
     <div class="max-w-4xl mx-auto">
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-4xl font-bold">Manage Users</h1>
-            <button id="add-user-button" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
+            <button @click="openAddModal()" class="flex items-center justify-center h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover">
                 <span class="material-symbols-outlined mr-2">add</span>
                 <span>Add New User</span>
             </button>
         </div>
-        <div id="user-list-container" class="bg-surface-1 rounded-lg border border-border-color">
-            </div>
-    </div>
-</main>
+        
+        <div class="bg-surface-1 rounded-lg border border-border-color">
+            
+            <template x-if="isLoading">
+                <p class="p-8 text-center text-text-secondary">Loading users...</p>
+            </template>
+            
+            <template x-if="!isLoading && users.length === 0">
+                <p class="p-8 text-center text-text-secondary">No users found. Click "Add New User" to get started.</p>
+            </template>
 
-<div id="user-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center p-4">
-    <div class="bg-surface-1 rounded-lg shadow-xl w-full max-w-lg border border-border-color">
-        <form id="user-form">
-            <input type="hidden" id="user-form-mode" name="mode">
+            <template x-if="!isLoading && errors.general">
+                 <p class="p-8 text-center text-danger" x-text="errors.general"></p>
+            </template>
             
-            <div class="p-6 border-b border-border-color"><h3 id="modal-title" class="text-2xl font-bold">Add New User</h3></div>
-            
-            <div class="p-8 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="user-username" class="block text-sm font-medium mb-1">Username</label>
-                        <input type="text" id="user-username" name="username" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                        <span id="user-username-error" class="form-error hidden mt-1"></span>
+            <template x-for="user in users" :key="user.username">
+                <div class="flex items-center justify-between p-4 border-b border-border-color last:border-b-0 hover:bg-surface-2">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center justify-center rounded-full bg-surface-2 shrink-0 size-10">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-text-primary" x-text="user.username"></p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-primary/20 text-primary" x-text="user.role"></span>
+                                <span x-show="user.disabled" class="text-xs font-semibold px-2 py-1 rounded-full bg-danger/20 text-danger">Disabled</span>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label for="user-role" class="block text-sm font-medium mb-1">Role</label>
-                        <select id="user-role" name="role" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                            <option value="admin">Admin</option>
-                            </select>
+                    <div class="flex items-center gap-4">
+                        <span x-show="user.receive_alerts || user.receive_announcements" class="material-symbols-outlined text-success text-base" title="Notifications enabled">notifications_active</span>
+                        <span x-show="!user.receive_alerts && !user.receive_announcements" class="material-symbols-outlined text-text-secondary text-base" title="Notifications disabled">notifications_off</span>
+                        
+                        <button @click="openEditModal(user)" title="Edit User" class="text-text-secondary hover:text-primary"><span class="material-symbols-outlined">edit</span></button>
+                        <button @click="deleteUser(user)" title="Delete User" class="text-text-secondary hover:text-danger"><span class="material-symbols-outlined">delete</span></button>
                     </div>
                 </div>
+            </template>
+            
+        </div>
+    </div>
+
+    <div x-show="isModalOpen" x-cloak
+         class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
+        
+        <div @click.away="closeModal()" class="bg-surface-1 rounded-lg shadow-xl w-full max-w-lg border border-border-color">
+            <form @submit.prevent="saveUser()">
                 
-                <div>
-                    <label for="user-password" class="block text-sm font-medium mb-1">Password</label>
-                    <input type="password" id="user-password" name="password" placeholder="Leave blank to keep current" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                    <p id="password-help-text" class="text-xs text-text-secondary mt-1">Required for new users.</p>
-                    <span id="user-password-error" class="form-error hidden mt-1"></span>
+                <div class="p-6 border-b border-border-color">
+                    <h3 class="text-2xl font-bold" x-text="modalMode === 'add' ? 'Add New User' : 'Edit User'"></h3>
                 </div>
                 
-                <div>
-                    <h4 class="text-md font-semibold text-text-primary mb-2">Notifications</h4>
+                <div class="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="user-telegram_chat_id" class="block text-sm font-medium mb-1">Telegram Chat ID</label>
-                            <input type="text" id="user-telegram_chat_id" name="telegram_chat_id" placeholder="Optional" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
-                            <span id="user-telegram_chat_id-error" class="form-error hidden mt-1"></span>
+                            <label for="user-username" class="block text-sm font-medium mb-1">Username</label>
+                            <input type="text" id="user-username" x-model="currentUser.username"
+                                   :readonly="modalMode === 'edit'"
+                                   :class="modalMode === 'edit' ? 'cursor-not-allowed bg-surface-2' : 'bg-background'"
+                                   class="w-full border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                            <span x-show="errors.username" x-text="errors.username" class="form-error mt-1 text-danger text-sm"></span>
                         </div>
-                        <div class="space-y-3 pt-1">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="user-receive_alerts" name="receive_alerts" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
-                                <span class="text-sm">Receive system alerts (e.g., AP down)</span>
-                            </label>
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="user-receive_announcements" name="receive_announcements" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
-                                <span class="text-sm">Receive admin announcements</span>
-                            </label>
+                        <div>
+                            <label for="user-role" class="block text-sm font-medium mb-1">Role</label>
+                            <select id="user-role" x-model="currentUser.role" required class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                                <option value="admin">Admin</option>
+                            </select>
                         </div>
                     </div>
-                </div>
+                    
+                    <div>
+                        <label for="user-password" class="block text-sm font-medium mb-1">Password</label>
+                        <input type="password" id="user-password" x-model="currentUser.password"
+                               :placeholder="modalMode === 'add' ? 'Enter a strong password' : 'Leave blank to keep current password'"
+                               :required="modalMode === 'add'"
+                               class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p x-show="modalMode === 'add'" class="text-xs text-text-secondary mt-1">Required for new users (min 6 chars).</p>
+                        <span x-show="errors.password" x-text="errors.password" class="form-error mt-1 text-danger text-sm"></span>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-md font-semibold text-text-primary mb-2">Notifications</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="user-telegram_chat_id" class="block text-sm font-medium mb-1">Telegram Chat ID</label>
+                                <input type="text" id="user-telegram_chat_id" x-model="currentUser.telegram_chat_id" placeholder="Optional" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                                <span x-show="errors.telegram_chat_id" x-text="errors.telegram_chat_id" class="form-error mt-1 text-danger text-sm"></span>
+                            </div>
+                            <div class="space-y-3 pt-1">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" id="user-receive_alerts" x-model="currentUser.receive_alerts" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
+                                    <span class="text-sm">Receive system alerts (e.g., AP down)</span>
+                                </label>
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" id="user-receive_announcements" x-model="currentUser.receive_announcements" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
+                                    <span class="text-sm">Receive admin announcements</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
 
-                <div>
-                    <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" id="user-disabled" name="disabled" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
-                        <span class="text-sm font-medium text-warning">Disable this user account</span>
-                    </label>
-                </div>
+                    <div>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="user-disabled" x-model="currentUser.disabled" class="size-4 rounded bg-background border-border-color text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-warning">Disable this user account</span>
+                        </label>
+                    </div>
 
-                <div id="user-form-error-main" class="form-error-main text-danger text-sm hidden"></div>
-            </div>
-            
-            <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
-                <button type="button" id="cancel-user-button" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
-                <button type="submit" id="save-user-button" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save User</button>
-            </div>
-        </form>
+                    <div x-show="errors.general" x-text="errors.general" class="form-error-main text-danger text-sm"></div>
+                </div>
+                
+                <div class="p-6 bg-surface-2 rounded-b-lg flex justify-end gap-4">
+                    <button type="button" @click.prevent="closeModal()" class="px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-1">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-primary hover:bg-primary-hover">Save User</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
+</main>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/utils/validators.js"></script>
-<script src="/static/js/utils/form-utils.js"></script>
-
-<script src="/static/js/users.js" defer></script>
+    <script src="/static/js/users.js" defer></script>
 {% endblock %}

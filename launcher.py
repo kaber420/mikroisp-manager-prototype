@@ -55,15 +55,33 @@ def run_setup_wizard():
     db_input = input(db_prompt).strip()
     db_file = db_input if db_input else existing_db_file
 
-    # --- INICIO DE MODIFICACIÓN ---
+    # --- CONFIGURACIÓN DE SEGURIDAD ---
+    
+    print("\n--- Configuración de Seguridad ---")
+    print("Define los hosts/puertos permitidos para acceder a la aplicación.")
+    print("Formato: host:puerto (ejemplo: localhost:8000)")
+    print("Para múltiples hosts, sepáralos con comas (ejemplo: localhost:8000,192.168.1.100:8000)")
+    
+    existing_hosts = os.getenv("ALLOWED_HOSTS", f"localhost:{port},127.0.0.1:{port}")
+    hosts_prompt = f"Hosts permitidos (Actual: {existing_hosts}): "
+    hosts_input = input(hosts_prompt).strip()
+    allowed_hosts = hosts_input if hosts_input else existing_hosts
+    
+    # Generar ALLOWED_ORIGINS automáticamente desde ALLOWED_HOSTS
+    # Convertir "localhost:8000,127.0.0.1:8000" a "http://localhost:8000,http://127.0.0.1:8000"
+    hosts_list = [h.strip() for h in allowed_hosts.split(",")]
+    origins_list = [f"http://{host}" for host in hosts_list]
+    allowed_origins = ",".join(origins_list)
+    
+    print(f"✓ ALLOWED_ORIGINS generado automáticamente: {allowed_origins}")
 
     # Generar claves de seguridad si no existen
     secret_key = os.getenv("SECRET_KEY")
     if not secret_key:
         print("Generando nueva SECRET_KEY para tokens JWT...")
-        secret_key = secrets.token_hex(32)  # <--- 1. AÑADIDO
+        secret_key = secrets.token_hex(32)
     else:
-        print("Usando SECRET_KEY existente.") # <--- 2. AÑADIDO
+        print("Usando SECRET_KEY existente.")
 
     encrypt_key = os.getenv("ENCRYPTION_KEY")
     if not encrypt_key:
@@ -77,20 +95,30 @@ def run_setup_wizard():
         with open(ENV_FILE, "w", encoding="utf-8") as f:
             f.write(f"# Archivo de configuracion de µMonitor Pro\n")
             f.write(f"# Clave para firmar tokens JWT\n")
-            f.write(f"SECRET_KEY=\"{secret_key}\"\n\n")  # <--- 3. AÑADIDO
+            f.write(f"SECRET_KEY=\"{secret_key}\"\n\n")
             f.write(f"# Clave para cifrar contraseñas de dispositivos\n")
             f.write(f"ENCRYPTION_KEY=\"{encrypt_key}\"\n\n")
             f.write(f"# Configuración del servidor\n")
             f.write(f"UVICORN_PORT={port}\n\n")
             f.write(f"# Configuración de la Base de Datos\n")
-            f.write(f"INVENTORY_DB_FILE=\"{db_file}\"\n")
+            f.write(f"INVENTORY_DB_FILE=\"{db_file}\"\n\n")
+            
+            # --- NUEVA SECCIÓN DE SEGURIDAD ---
+            f.write(f"# Configuración de Entorno\n")
+            f.write(f"APP_ENV=development\n\n")
+            f.write(f"# ============================================================================\n")
+            f.write(f"# SEGURIDAD: CORS Y VALIDACIÓN DE HOST\n")
+            f.write(f"# ============================================================================\n")
+            f.write(f"# CORS - Bloquea peticiones cross-origin (URLs completas con protocolo)\n")
+            f.write(f"ALLOWED_ORIGINS={allowed_origins}\n\n")
+            f.write(f"# Host Validation - Bloquea acceso directo (host:puerto sin protocolo)\n")
+            f.write(f"ALLOWED_HOSTS={allowed_hosts}\n\n")
+            f.write(f"# Para producción, cambia APP_ENV=production y actualiza los dominios\n")
         
         print(f"\n¡Éxito! Configuración guardada en el archivo '{ENV_FILE}'.")
     except IOError as e:
         print(f"\nError Crítico: No se pudo escribir el archivo .env. Causa: {e}")
         sys.exit(1)
-        
-    # --- FIN DE MODIFICACIÓN ---
 
 def check_and_create_first_user(db_file, get_pass_hash_func):
     """
@@ -149,9 +177,6 @@ def check_and_create_first_user(db_file, get_pass_hash_func):
         if conn:
             conn.close()
 
-# ---
-# Las funciones que inician procesos se quedan aquí.
-# ---
 
 def start_api_server():
     """

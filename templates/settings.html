@@ -8,18 +8,43 @@
         <h1 class="text-4xl font-bold mb-8">Global Settings</h1>
         <form id="settings-form" class="bg-surface-1 rounded-lg border border-border-color">
             <div class="p-8 space-y-8">
+                
                 <div>
+                    <h3 class="text-lg font-semibold text-text-primary">General Information</h3>
+                    <p class="text-sm text-text-secondary mt-1">Basic details about your ISP organization.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
+                    <div>
+                        <label for="company_name" class="block text-sm font-medium mb-2">Company Name</label>
+                        <input type="text" id="company_name" name="company_name" placeholder="My ISP Name" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label for="notification_email" class="block text-sm font-medium mb-2">Admin Email</label>
+                        <input type="email" id="notification_email" name="notification_email" placeholder="admin@example.com" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label for="currency_symbol" class="block text-sm font-medium mb-2">Currency Symbol</label>
+                        <input type="text" id="currency_symbol" name="currency_symbol" placeholder="$" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-border-color">
                     <h3 class="text-lg font-semibold text-text-primary">Telegram Alerts</h3>
                     <p class="text-sm text-text-secondary mt-1">Configure your Telegram Bot to receive notifications.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border-color pt-6">
                     <div>
                         <label for="telegram_bot_token" class="block text-sm font-medium mb-2">Bot Token</label>
-                        <input type="password" id="telegram_bot_token" name="telegram_bot_token" placeholder="Enter your bot token" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <input type="password" id="telegram_bot_token" name="telegram_bot_token" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
                     </div>
                     <div>
                         <label for="telegram_chat_id" class="block text-sm font-medium mb-2">Chat ID</label>
-                        <input type="text" id="telegram_chat_id" name="telegram_chat_id" placeholder="Enter your personal or group Chat ID" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <input type="text" id="telegram_chat_id" name="telegram_chat_id" 
+                               placeholder="e.g. 123456789 or -100123456" 
+                               pattern="^-?\d+$"
+                               title="Must be a numeric ID (can start with - for groups)"
+                               class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-danger mt-1">⚠️ Do NOT use a phone number. Use the numeric ID from @userinfobot.</p>
                     </div>
                 </div>
                 
@@ -47,6 +72,11 @@
                         <label for="days_before_due" class="block text-sm font-medium mb-2">Days Before Due (Pending State)</label>
                         <input type="number" id="days_before_due" name="days_before_due" placeholder="e.g., 5" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
                         <p class="text-xs text-text-secondary mt-2">Clients change to 'Pending' (Yellow) this many days before payment is due.</p>
+                    </div>
+                    <div>
+                        <label for="billing_alert_days" class="block text-sm font-medium mb-2">Alert Days</label>
+                        <input type="number" id="billing_alert_days" name="billing_alert_days" placeholder="e.g., 3" class="w-full bg-background border border-border-color rounded-md p-2 focus:ring-primary focus:border-primary">
+                        <p class="text-xs text-text-secondary mt-2">Days before cutoff to send reminders.</p>
                     </div>
                     <div>
                         <label for="suspension_run_hour" class="block text-sm font-medium mb-2">Suspension Time</label>

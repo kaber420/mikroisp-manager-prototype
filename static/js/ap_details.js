@@ -3,44 +3,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentHost = window.location.pathname.split('/').pop();
     let charts = {};
     let isStopping = false;
-
-    let backgroundRefreshIntervalId = null;
-    let refreshIntervalMs = 60000;
+    
+    // Estado para saber qué gráfica mostrar al actualizar
+    let currentPeriod = '24h';
 
     const deviceInfoCard = document.getElementById('device-info-card');
     const chartsCard = document.getElementById('charts-card');
     const clientListSection = document.getElementById('client-list-section');
 
-    async function loadAndSetRefreshInterval() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/settings`);
-            if (!response.ok) throw new Error('Failed to fetch settings');
-            const settings = await response.json();
-            const intervalSeconds = parseInt(settings.dashboard_refresh_interval, 10);
-            if (!isNaN(intervalSeconds) && intervalSeconds > 0) {
-                refreshIntervalMs = intervalSeconds * 1000;
-                console.log(`Intervalo de refresco de fondo establecido en: ${intervalSeconds} segundos.`);
-            } else {
-                console.warn(`Valor de intervalo no encontrado en settings. Usando por defecto: ${refreshIntervalMs / 1000}s.`);
-            }
-        } catch (error) {
-            console.error('No se pudo cargar la configuración del intervalo. Usando valor por defecto.', error);
-        }
-    }
-
-    function stopBackgroundRefresh() {
-        if (backgroundRefreshIntervalId) {
-            clearInterval(backgroundRefreshIntervalId);
-            backgroundRefreshIntervalId = null;
-            console.log('Refresco de fondo detenido.');
-        }
-    }
-
-    function startBackgroundRefresh() {
-        stopBackgroundRefresh();
-        console.log(`Iniciando refresco de fondo cada ${refreshIntervalMs / 1000} segundos...`);
-        backgroundRefreshIntervalId = setInterval(loadApDetails, refreshIntervalMs);
-    }
+    // --- SECCIÓN ELIMINADA: loadAndSetRefreshInterval, startBackgroundRefresh, etc. ---
+    // Ya no necesitamos polling de fondo.
 
     let diagnosticManager = {
         intervalId: null, timeoutId: null, countdownId: null,
@@ -59,6 +31,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Diagnostic mode stopped.');
         }
     };
+
+    // --- INICIO: Escucha Reactiva (WebSocket) ---
+    window.addEventListener('data-refresh-needed', () => {
+        // LÓGICA IMPORTANTE:
+        // Si el "Modo Diagnóstico/Live" está activo, NO recargamos los datos generales
+        // porque interrumpiríamos la visualización en tiempo real con una recarga completa.
+        if (!diagnosticManager.intervalId) {
+            console.log("⚡ AP Details: Recargando datos por señal del Monitor...");
+            
+            // Recargar datos del AP (Estado, Clientes, etc)
+            loadApDetails();
+            
+            // Recargar gráficas manteniendo el periodo seleccionado
+            loadChartData(currentPeriod);
+        } else {
+            console.log("⏳ AP Details: Actualización de fondo pausada (Modo Live activo).");
+        }
+    });
+    // --- FIN: Escucha Reactiva ---
 
     function formatBytes(bytes) {
         if (bytes == null || bytes === 0) return '0 Bytes';
@@ -238,11 +229,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Saliendo del Modo Live, restaurando vista de historial...');
         try {
             await loadApDetails();
-            const activePeriodButton = document.querySelector('.chart-button.active');
-            const periodToLoad = activePeriodButton ? activePeriodButton.dataset.period : '24h';
-            await loadChartData(periodToLoad);
+            // Restauramos la gráfica con el periodo seleccionado actualmente
+            await loadChartData(currentPeriod);
             console.log('Vista de historial restaurada.');
-            startBackgroundRefresh();
+            // startBackgroundRefresh(); // ELIMINADO
         } catch (error) {
             console.error('Ocurrió un error al restaurar la vista de historial:', error);
         }
@@ -250,7 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function startDiagnosticMode() {
-        stopBackgroundRefresh();
+        // stopBackgroundRefresh(); // ELIMINADO (Ya no existe)
         diagnosticManager.stop(false);
         const DURATION_MINUTES = 5;
         let remaining = DURATION_MINUTES * 60;
@@ -281,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function loadChartData(period = '24h') {
+        currentPeriod = period; // Guardamos el estado actual
         if (chartsCard) {
             chartsCard.style.filter = 'blur(4px)';
             chartsCard.style.opacity = '0.6';
@@ -407,13 +398,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('edit-username').value = apData.username; 
         document.getElementById('edit-monitor_interval').value = apData.monitor_interval; 
         populateZoneSelect(document.getElementById('edit-zona_id'), apData.zona_id); 
-        document.getElementById('edit-ap-modal').classList.add('is-open');
+        document.getElementById('edit-ap-modal').classList.remove('hidden');
+        document.getElementById('edit-ap-modal').classList.add('flex');
     }
 
     function closeEditModal(){ 
         document.getElementById('edit-ap-form').reset(); 
         document.getElementById('edit-form-error').classList.add('hidden'); 
-        document.getElementById('edit-ap-modal').classList.remove('is-open'); 
+        document.getElementById('edit-ap-modal').classList.add('hidden');
+        document.getElementById('edit-ap-modal').classList.remove('flex'); 
     }
 
     async function populateZoneSelect(selectElement, selectedId){ 
@@ -432,7 +425,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         button.addEventListener('click', () => {
             document.querySelectorAll('.chart-button').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            loadChartData(button.dataset.period);
+            // Guardar el periodo seleccionado
+            const period = button.dataset.period;
+            loadChartData(period);
         });
     });
 
@@ -449,10 +444,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    await loadAndSetRefreshInterval();
+    // Inicialización (Sin startBackgroundRefresh)
     loadApDetails();
     loadChartData('24h');
-    startBackgroundRefresh();
 
     const editCancelButton = document.getElementById('edit-cancel-button');
     const editApForm = document.getElementById('edit-ap-form');

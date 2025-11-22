@@ -408,39 +408,92 @@
             </div>
         </div>
 
-        <div x-show="activeTab === 'queues'" class="card">
-            <h2 class="text-xl font-bold mb-4">Gestión de Colas Padre</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h4 class="text-base font-semibold">Colas Padre Existentes</h4>
-                    <div id="parent-queue-list-display" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
-                </div>
-                <div class="space-y-4">
-                    <h4 class="text-base font-semibold">Crear Cola Padre</h4>
-                    <form id="add-parent-queue-form" class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label for="q-name" class="block text-xs font-medium text-text-secondary mb-1">Nombre de Cola</label>
-                                <input type="text" id="q-name" name="name" placeholder="ej. Total-Clientes" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            </div>
-                            <div>
-                                <label for="q-max-limit" class="block text-xs font-medium text-text-secondary mb-1">Límite Máximo</label>
-                                <input type="text" id="q-max-limit" name="max_limit" placeholder="ej. 100M/100M" class="w-full bg-background border border-border-color rounded-md p-2" required>
-                            </div>
+        <div x-show="activeTab === 'queues'" class="space-y-6">
+            <div class="card">
+                <h2 class="text-xl font-bold mb-4">Gestión de Colas Padre (Infraestructura)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-base font-semibold">Colas Padre en Router</h4>
+                            <div id="parent-queue-list-display" class="text-sm space-y-1 font-mono max-h-40 overflow-y-auto"></div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label for="q-target" class="block text-xs font-medium text-text-secondary mb-1">Target (Red o Interfaz)</label>
-                                <input type="text" id="q-target" name="target" placeholder="ej. 192.168.10.0/24 o ether1" class="w-full bg-background border border-border-color rounded-md p-2" list="q-target-datalist" required>
-                                <datalist id="q-target-datalist"></datalist>
-                            </div>
-                            <div>
-                                <label for="q-dst" class="block text-xs font-medium text-text-secondary mb-1">Destination (Opcional)</label>
-                                <input type="text" id="q-dst" name="dst" placeholder="ej. 0.0.0.0/0" class="w-full bg-background border border-border-color rounded-md p-2">
-                            </div>
+                        <div class="space-y-4">
+                            <h4 class="text-base font-semibold">Crear Nueva Cola Padre</h4>
+                            <form id="add-parent-queue-form" class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-text-secondary mb-1">Nombre</label>
+                                        <input type="text" name="name" placeholder="Total-Clientes" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-text-secondary mb-1">Max Limit</label>
+                                        <input type="text" name="max_limit" placeholder="100M/100M" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-text-secondary mb-1">Target</label>
+                                        <input type="text" name="target" placeholder="192.168.0.0/24" class="w-full bg-background border border-border-color rounded-md p-2">
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="is-parent-checkbox" name="is_parent" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" checked>
+                                    <label for="is-parent-checkbox" class="text-sm text-text-secondary">Mark as Infrastructure / Parent Queue</label>
+                                </div>
+                                <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Cola en Router</button>
+                            </form>
                         </div>
-                        <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">Crear Cola Padre</button>
-                    </form>
+                 </div>
+            </div>
+
+            <div class="card">
+                <h2 class="text-xl font-bold mb-4 text-primary">Planes de Servicio (Definiciones Locales)</h2>
+                <p class="text-sm text-text-secondary mb-4">Estos planes se guardan en la Base de Datos y se usan para asignar velocidad a los clientes de este router.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-base font-semibold mb-2">Planes Disponibles</h4>
+                        <div class="overflow-x-auto border border-border-color rounded-md">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-surface-2 text-text-secondary font-semibold">
+                                    <tr>
+                                        <th class="p-2">Nombre</th>
+                                        <th class="p-2">Velocidad</th>
+                                        <th class="p-2">Padre</th>
+                                        <th class="p-2">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="local-plans-table-body" class="divide-y divide-border-color">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 bg-surface-2 p-4 rounded-md border border-border-color">
+                        <h4 class="text-base font-semibold">Definir Nuevo Plan</h4>
+                        <form id="create-local-plan-form" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-text-secondary mb-1">Nombre del Plan</label>
+                                    <input type="text" id="lp-name" name="name" placeholder="Ej: Residencial 10M" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-text-secondary mb-1">Velocidad (Up/Down)</label>
+                                    <input type="text" id="lp-limit" name="max_limit" placeholder="Ej: 5M/10M" class="w-full bg-background border border-border-color rounded-md p-2" required>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-medium text-text-secondary mb-1">Cola Padre (Parent)</label>
+                                <select id="lp-parent" name="parent_queue" class="w-full bg-background border border-border-color rounded-md p-2">
+                                    <option value="">-- Ninguna (Root) --</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="h-10 px-4 text-sm font-bold text-white rounded-lg bg-primary hover:bg-primary-hover w-full">
+                                Guardar Definición de Plan
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

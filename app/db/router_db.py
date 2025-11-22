@@ -15,7 +15,7 @@ def get_router_by_host(host: str) -> Optional[Dict[str, Any]]:
     """Obtiene todos los datos de un router por su host."""
     try:
         conn = get_db_connection()
-        cursor = conn.execute("SELECT * FROM routers WHERE host = ?", (host,))
+        cursor = conn.execute("SELECT rowid as id, * FROM routers WHERE host = ?", (host,))
         row = cursor.fetchone()
         conn.close()
         

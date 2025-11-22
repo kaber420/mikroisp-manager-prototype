@@ -119,3 +119,39 @@ def get_ap_history(
         raise HTTPException(status_code=404, detail=str(e))
     except APDataError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aps/validate", status_code=200)
+def validate_ap_connection(ap_data: APCreate):
+    """
+    Intenta conectar con el AP usando las credenciales proporcionadas.
+    No guarda nada en la BD. Retorna éxito o error.
+    """
+    # Importación local para evitar ciclos si fuera necesario, o simplemente porque no estaba arriba
+    from ...utils.device_clients.ap_client import UbiquitiClient
+
+    try:
+        # Instanciamos el cliente (nota: verify_ssl=False por defecto en tu cliente)
+        client = UbiquitiClient(
+            host=ap_data.host,
+            username=ap_data.username,
+            password=ap_data.password
+        )
+        
+        # Intentamos obtener datos. Si falla la autenticación o conexión, get_status_data suele retornar None o lanzar error.
+        status_data = client.get_status_data()
+        
+        if status_data:
+            # Extraemos info básica para confirmar al usuario
+            hostname = status_data.get("host", {}).get("hostname", "Unknown")
+            model = status_data.get("host", {}).get("devmodel", "Unknown")
+            return {
+                "status": "success", 
+                "message": f"Conexión Exitosa: {hostname} ({model})"
+            }
+        else:
+            # Si get_status_data retorna None (fallo auth/red manejado internamente)
+            raise HTTPException(status_code=400, detail="No se pudo conectar. Verifique IP/Credenciales o que el dispositivo esté online.")
+
+    except Exception as e:
+        # Captura cualquier error de conexión no manejado
+        raise HTTPException(status_code=400, detail=f"Error de conexión: {str(e)}")

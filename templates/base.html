@@ -14,8 +14,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     
-    <script src="//unpkg.com/alpinejs" defer></script>
-
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -37,8 +35,12 @@
     
     <style>
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
-        .modal { display: none; }
-        .modal.is-open { display: flex; }
+        
+        [x-cloak] {
+            display: none !important;
+        }
+        
+        /* ¡ARREGLADO! Las líneas .modal y .modal.is-open han sido eliminadas */
         
         /* Utilidades para la barra de scroll */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -53,6 +55,9 @@
         .filter-button.active { background-color: #3B82F6; color: white; }
     </style>
     
+    <script src="/static/js/utils/validators.js"></script>
+    {% block scripts %}{% endblock %}
+
     {% block styles %}{% endblock %}
 </head>
 <body class="bg-background text-text-primary font-sans antialiased">
@@ -81,6 +86,13 @@
                         µMonitor <span class="text-sm font-medium text-text-secondary">Pro</span>
                     </h1>
                 </a>
+                <div class="d-flex align-items-center ms-3">
+                    <span id="ws-indicator" 
+                          style="height: 12px; width: 12px; background-color: #95a5a6; border-radius: 50%; display: inline-block; transition: background-color 0.3s;"
+                          data-bs-toggle="tooltip" title="Conectando...">
+                    </span>
+                    <small class="text-muted ms-2" style="font-size: 0.75rem;">En Vivo</small>
+                </div>
             </div>
 
             <div class="p-4 flex-grow overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -194,14 +206,13 @@
                 </div>
             </div>
         </aside>
-
         {% block content %}{% endblock %}
 
     </div>
     
-    <script src="/static/js/utils/validators.js" defer></script>
-    <script src="/static/js/utils/form-utils.js" defer></script>
+    <script src="{{ url_for('static', path='/js/ws-client.js') }}"></script>
+
+    <script src="//unpkg.com/alpinejs" defer></script>
     
-    {% block scripts %}{% endblock %}
 </body>
 </html>

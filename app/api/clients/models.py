@@ -40,6 +40,7 @@ class ClientUpdate(BaseModel):
 class AssignedCPE(BaseModel):
     mac: str
     hostname: Optional[str] = None
+    ip_address: Optional[str] = None  # <--- AGREGADO: Ahora la API puede enviar la IP
     model_config = ConfigDict(from_attributes=True)
 
 # --- Modelos Pydantic (Servicios) ---
@@ -49,6 +50,8 @@ class ClientServiceBase(BaseModel):
     pppoe_username: Optional[str] = None
     router_secret_id: Optional[str] = None
     profile_name: Optional[str] = None
+    plan_id: Optional[int] = None
+    ip_address: Optional[str] = None
     suspension_method: str
 
 class ClientServiceCreate(ClientServiceBase):
@@ -63,7 +66,7 @@ class ClientService(ClientServiceBase):
 # --- Modelos Pydantic (Pagos) ---
 class PaymentBase(BaseModel):
     monto: float
-    mes_correspondiente: str # ej. "2025-11"
+    mes_correspondiente: str
     metodo_pago: Optional[str] = None
     notas: Optional[str] = None
 

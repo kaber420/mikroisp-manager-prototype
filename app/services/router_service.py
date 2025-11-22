@@ -49,6 +49,11 @@ class RouterService:
             plaintext_login=True
         )
 
+    def disconnect(self):
+        """Cierra el pool de conexiones."""
+        if self.pool:
+            self.pool.disconnect()
+
     def _execute_command(self, func, *args, **kwargs) -> Any:
         """Wrapper para ejecutar un comando de los módulos mikrotik manejando la conexión."""
         api = None
@@ -58,47 +63,32 @@ class RouterService:
         except Exception as e:
             logger.error(f"Error de comando en {self.host} ({func.__name__}): {e}")
             raise RouterCommandError(f"Error en {self.host}: {e}")
-        finally:
-            if self.pool:
-                self.pool.disconnect()
 
     # --- MÉTODOS DELEGADOS A LOS NUEVOS MÓDULOS ---
 
     def add_vlan(self, name: str, vlan_id: str, interface: str, comment: str):
         api = self.pool.get_api()
         manager = MikrotikInterfaceManager(api)
-        try:
-            return manager.add_vlan(name, vlan_id, interface, comment)
-        finally:
-            self.pool.disconnect()
+        return manager.add_vlan(name, vlan_id, interface, comment)
 
     def update_vlan(self, vlan_id: str, name: str, new_vlan_id: str, interface: str):
         api = self.pool.get_api()
         manager = MikrotikInterfaceManager(api)
-        try:
-            return manager.update_vlan(vlan_id, name, new_vlan_id, interface)
-        finally:
-            self.pool.disconnect()
+        return manager.update_vlan(vlan_id, name, new_vlan_id, interface)
 
     def add_bridge(self, name: str, ports: List[str], comment: str):
         api = self.pool.get_api()
         manager = MikrotikInterfaceManager(api)
-        try:
-            bridge = manager.add_bridge(name, comment)
-            manager.set_bridge_ports(name, ports)
-            return bridge
-        finally:
-            self.pool.disconnect()
+        bridge = manager.add_bridge(name, comment)
+        manager.set_bridge_ports(name, ports)
+        return bridge
 
     def update_bridge(self, bridge_id: str, name: str, ports: List[str]):
         api = self.pool.get_api()
         manager = MikrotikInterfaceManager(api)
-        try:
-            bridge = manager.update_bridge(bridge_id, name)
-            manager.set_bridge_ports(name, ports)
-            return bridge
-        finally:
-            self.pool.disconnect()
+        bridge = manager.update_bridge(bridge_id, name)
+        manager.set_bridge_ports(name, ports)
+        return bridge
 
     def set_pppoe_secret_status(self, secret_id: str, disable: bool):
         return self._execute_command(ppp.enable_disable_pppoe_secret, secret_id=secret_id, disable=disable)
@@ -212,14 +202,35 @@ class RouterService:
             return details
         except Exception as e:
             raise RouterCommandError(f"Error en {self.host} (get_full_details): {e}")
-        finally:
-            if self.pool:
-                self.pool.disconnect()
 
-def get_router_service(host: str) -> RouterService:
+# Esta es la función de Inyección de Dependencias
+def get_router_service(host: str):
+    service = None
     try:
-        return RouterService(host)
+        # --- FASE 1: PREPARACIÓN (Setup) ---
+        # Aquí se crea la instancia.
+        # Al instanciarse la clase RouterService, se abre el socket TCP/SSL al Mikrotik.
+        # Esto "arranca el auto".
+        service = RouterService(host)
+        
+        # --- PAUSA Y ENTREGA ---
+        # Entregamos el servicio al endpoint que lo pidió (ej. /routers/add-ip).
+        # FastAPI pausa esta función aquí y ejecuta tu endpoint.
+        yield service
+        
     except (RouterConnectionError, RouterNotProvisionedError) as e:
+        # Manejo de errores si no se pudo conectar al inicio
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+    finally:
+        # --- FASE 2: LIMPIEZA (Teardown) ---
+        # Este código se ejecuta SIEMPRE, justo después de que tu endpoint responda al usuario.
+        # Aquí "apagamos el auto" y devolvemos las llaves.
+        if service:
+            try:
+                service.disconnect() # <--- Método que creamos para cerrar el pool
+                print(f"Conexión con {host} cerrada correctamente.") # (Opcional: para debug)
+            except Exception as e:
+                print(f"Error cerrando conexión: {e}")

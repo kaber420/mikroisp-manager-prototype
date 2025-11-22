@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 
 # --- Existing Router Models ---
 class RouterResponse(BaseModel):
+    id: Optional[int] = None
     host: str
     username: str
     zona_id: Optional[int] = None
@@ -86,8 +87,10 @@ class AddSimpleQueueRequest(BaseModel):
     name: str
     target: str
     max_limit: str
+    parent: Optional[str] = None
     dst: Optional[str] = None
     comment: Optional[str] = None
+    is_parent: bool = False
 
 class AddIpRequest(BaseModel):
     address: str

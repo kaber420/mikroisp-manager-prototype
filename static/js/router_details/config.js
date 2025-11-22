@@ -26,7 +26,7 @@ export const DOM_ELEMENTS = {
     formFeedback: document.getElementById('form-feedback'),
     // Listas de Datos
     interfacesTableBody: document.getElementById('interfaces-table-body'),
-    interfaceFilterButtons: document.getElementById('interface-filter-buttons'), // <-- AQUÍ ESTÁ LA NUEVA LÍNEA
+    interfaceFilterButtons: document.getElementById('interface-filter-buttons'),
     ipAddressList: document.getElementById('ip-address-list'),
     natRulesList: document.getElementById('nat-rules-list'),
     pppProfileList: document.getElementById('ppp-profile-list'),
@@ -37,12 +37,22 @@ export const DOM_ELEMENTS = {
     pppoeActiveList: document.getElementById('pppoe-active-list'),
     backupFilesList: document.getElementById('backup-files-list'),
     routerUsersList: document.getElementById('router-users-list'),
+
+    // --- NUEVO: Tabla para planes locales ---
+    localPlansTableBody: document.getElementById('local-plans-table-body'),
+
     // Formularios
     addIpForm: document.getElementById('add-ip-form'),
     addNatForm: document.getElementById('add-nat-form'),
     addPppoeForm: document.getElementById('add-pppoe-form'),
     addParentQueueForm: document.getElementById('add-parent-queue-form'),
+
+    // Este es el formulario de la pestaña PPP (RouterOS profiles)
     addPlanForm: document.getElementById('add-plan-form'),
+
+    // --- NUEVO: Formulario de Planes Locales (Pestaña Queues) ---
+    createLocalPlanForm: document.getElementById('create-local-plan-form'),
+
     createBackupForm: document.getElementById('create-backup-form'),
     addRouterUserForm: document.getElementById('add-router-user-form'),
     // Inputs
@@ -85,7 +95,7 @@ export const DOM_ELEMENTS = {
     vlanIdInput: document.getElementById('vlan-id-input'),
     vlanNameInput: document.getElementById('vlan-name'),
     vlanInterfaceSelect: document.getElementById('vlan-interface'),
-    
+
     bridgeModal: document.getElementById('bridge-modal'),
     bridgeModalTitle: document.getElementById('bridge-modal-title'),
     bridgeForm: document.getElementById('bridge-form'),
@@ -108,7 +118,8 @@ export const DOM_ELEMENTS = {
  */
 export let state = {
     allInterfaces: [],
-    currentRouterName: 'router'
+    currentRouterName: 'router',
+    routerId: null // <--- NUEVO: Para guardar el ID de la BD
 };
 
 /**

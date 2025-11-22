@@ -1,23 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = window.location.origin;
-    let refreshIntervalId = null;
     
-    // NOTA: allAps, allZones, currentFilter, y applyFilter han sido eliminados.
-    
+    // --- FUNCIÓN 1: Cargar Tops (Airtime y Señal) ---
     async function loadTopStats() {
         const topAirtimeList = document.getElementById('top-airtime-list');
         const topSignalList = document.getElementById('top-signal-list');
         if (!topAirtimeList || !topSignalList) return;
 
-        // Poner en estado de carga
-        topAirtimeList.innerHTML = `<div class="text-text-secondary text-sm">Loading...</div>`;
-        topSignalList.innerHTML = `<div class="text-text-secondary text-sm">Loading...</div>`;
-        topAirtimeList.style.filter = 'blur(4px)';
-        topAirtimeList.style.opacity = '0.6';
-        topSignalList.style.filter = 'blur(4px)';
-        topSignalList.style.opacity = '0.6';
-        topAirtimeList.style.transition = 'filter 0.3s ease, opacity 0.3s ease';
-        topSignalList.style.transition = 'filter 0.3s ease, opacity 0.3s ease';
+        // Efecto visual sutil de actualización
+        topAirtimeList.style.opacity = '0.5';
+        topSignalList.style.opacity = '0.5';
         
         try {
             const [airtimeRes, signalRes] = await Promise.all([
@@ -25,119 +17,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`${API_BASE_URL}/api/stats/top-cpes-by-signal`)
             ]);
             
-            // --- Carga de Airtime ---
+            // Render Airtime
             if (airtimeRes.ok) {
                 const topAirtime = await airtimeRes.json();
-                topAirtimeList.innerHTML = ''; // Limpiar "Loading..."
+                topAirtimeList.innerHTML = ''; 
                 if(topAirtime.length > 0) {
                     topAirtime.forEach(ap => { 
-                        topAirtimeList.innerHTML += `<div class="flex items-center justify-between"><p class="text-sm font-medium truncate">${ap.hostname 
-                        || ap.host}</p><span class="text-sm font-bold text-warning">${(ap.airtime_total_usage / 10.0).toFixed(1)}%</span></div>`; 
+                        topAirtimeList.innerHTML += `<div class="flex items-center justify-between"><p class="text-sm font-medium truncate">${ap.hostname || ap.host}</p><span class="text-sm font-bold text-warning">${(ap.airtime_total_usage / 10.0).toFixed(1)}%</span></div>`; 
                     });
                 } else { 
-                    topAirtimeList.innerHTML = `<div class="text-text-secondary text-sm">No airtime data available.</div>`; 
+                    topAirtimeList.innerHTML = `<div class="text-text-secondary text-sm">No data.</div>`; 
                 }
-            } else {
-                 throw new Error('Failed to load top airtime');
             }
             
-            // --- Carga de Signal ---
+            // Render Signal
             if (signalRes.ok) {
                 const topSignal = await signalRes.json();
-                topSignalList.innerHTML = ''; // Limpiar "Loading..."
+                topSignalList.innerHTML = '';
                 if(topSignal.length > 0) {
                     topSignal.forEach(cpe => { 
-                        topSignalList.innerHTML += `<div class="flex items-center justify-between"><p class="text-sm font-medium truncate">${cpe.cpe_hostname || 
-                        cpe.cpe_mac}</p><span class="text-sm font-bold text-danger">${cpe.signal} dBm</span></div>`; 
+                        topSignalList.innerHTML += `<div class="flex items-center justify-between"><p class="text-sm font-medium truncate">${cpe.cpe_hostname || cpe.cpe_mac}</p><span class="text-sm font-bold text-danger">${cpe.signal} dBm</span></div>`; 
                     });
                 } else { 
-                    topSignalList.innerHTML = `<div class="text-text-secondary text-sm">No CPE signal data available.</div>`;
+                    topSignalList.innerHTML = `<div class="text-text-secondary text-sm">No data.</div>`;
                 }
-            } else {
-                throw new Error('Failed to load top signal');
             }
-
-            // Quitar blur en éxito
-            setTimeout(() => {
-                topAirtimeList.style.filter = 'blur(0px)';
-                topAirtimeList.style.opacity = '1';
-                topSignalList.style.filter = 'blur(0px)';
-                topSignalList.style.opacity = '1';
-            }, 50);
 
         } catch (error) {
             console.error("Error loading top stats:", error);
-            topAirtimeList.innerHTML = `<div class="text-danger text-sm">Error loading data.</div>`;
-            topSignalList.innerHTML = `<div class="text-danger text-sm">Error loading data.</div>`;
-            topAirtimeList.style.filter = 'blur(0px)';
+        } finally {
+            // Restaurar opacidad
             topAirtimeList.style.opacity = '1';
-            topSignalList.style.filter = 'blur(0px)';
             topSignalList.style.opacity = '1';
         }
     }
 
+    // --- FUNCIÓN 2: Cargar Datos Principales ---
     async function loadInitialData() {
         try {
-            // --- INICIO DE CAMBIOS ---
-            // 'zonesRes' ya no es necesario aquí
             const [apsRes, cpeCountRes] = await Promise.all([ 
                 fetch(`${API_BASE_URL}/api/aps`),
                 fetch(`${API_BASE_URL}/api/stats/cpe-count`)
             ]);
 
-            // if (!zonesRes.ok) throw new Error(`Failed to load zones (${zonesRes.status})`); // Eliminado
-            if (!apsRes.ok) throw new Error(`Failed to load APs (${apsRes.status})`);
-            if (!cpeCountRes.ok) throw new Error(`Failed to load CPE count (${cpeCountRes.status})`);
+            if (!apsRes.ok || !cpeCountRes.ok) throw new Error('Failed to load dashboard data');
             
-            // allZones = await zonesRes.json(); // Eliminado
-            const allAps = await apsRes.json(); // Se declara localmente
+            const allAps = await apsRes.json();
             const cpeCountData = await cpeCountRes.json();
             
-            // El bloque 'nav' ha sido eliminado por completo
-            
-            // --- Calcular Estadísticas ---
+            // Calcular Estadísticas
             let cpesOnline = 0;
             let apsOnline = 0;
             
             allAps.forEach(ap => { 
                 if (ap.last_status === 'online') { 
                     apsOnline++;
-                    if (ap.client_count != null) { 
-                        cpesOnline += ap.client_count;
-                    } 
+                    if (ap.client_count != null) cpesOnline += ap.client_count;
                 } 
             });
+
             const totalAps = allAps.length;
             const apsOffline = totalAps - apsOnline;
-            
             const totalCpes = cpeCountData.total_cpes;
             const cpesOffline = totalCpes - cpesOnline;
             
+            // Actualizar UI con transiciones
             updateStatWithTransition('total-aps', totalAps);
             updateStatWithTransition('aps-online', apsOnline);
             updateStatWithTransition('aps-offline', apsOffline);
-            
             updateStatWithTransition('total-cpes', totalCpes);
             updateStatWithTransition('cpes-online', cpesOnline);
             updateStatWithTransition('cpes-offline', cpesOffline);
             
-            // applyFilter() ha sido eliminado
-            loadTopStats(); // Cargar los "Top 5"
+            loadTopStats(); 
 
         } catch (error) {
-            console.error("Error loading initial data:", error);
-            // Mostrar error en la UI para que el usuario sepa qué falló
-            updateStatWithTransition('total-aps', 'ERR');
-            updateStatWithTransition('aps-online', 'ERR');
-            updateStatWithTransition('aps-offline', 'ERR');
-            updateStatWithTransition('total-cpes', 'ERR');
-            updateStatWithTransition('cpes-online', 'ERR');
-            updateStatWithTransition('cpes-offline', 'ERR');
-            
-            const topAirtimeList = document.getElementById('top-airtime-list');
-            const topSignalList = document.getElementById('top-signal-list');
-            if(topAirtimeList) topAirtimeList.innerHTML = `<div class="text-danger text-sm">Failed to load data: ${error.message}</div>`;
-            if(topSignalList) topSignalList.innerHTML = `<div class="text-danger text-sm">Failed to load data: ${error.message}</div>`;
+            console.error("Dashboard Load Error:", error);
         }
     }
 
@@ -145,10 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const element = document.getElementById(elementId);
         if (!element) return;
         
-        const currentValue = element.textContent;
-        // Convertir newValue a string para la comparación
         const newValueStr = String(newValue);
-        if (currentValue === newValueStr) return;
+        if (element.textContent === newValueStr) return;
         
         element.style.transition = 'opacity 0.2s ease';
         element.style.opacity = '0.5';
@@ -158,29 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
     }
     
-    async function initializeDashboard() {
-        await loadInitialData(); // Carga inicial
-        
-        // Configurar auto-refresco
-        try {
-            const settingsResponse = await fetch(`${API_BASE_URL}/api/settings`);
-            if (!settingsResponse.ok) throw new Error('Failed to fetch settings');
-            const settings = await settingsResponse.json();
-            const refreshIntervalSeconds = parseInt(settings.dashboard_refresh_interval, 10);
-            
-            if (refreshIntervalSeconds && refreshIntervalSeconds > 0) {
-                if (refreshIntervalId) clearInterval(refreshIntervalId);
-                refreshIntervalId = setInterval(loadInitialData, refreshIntervalSeconds * 1000);
-                console.log(`Dashboard auto-refresh configured for every ${refreshIntervalSeconds} seconds.`);
-            } else {
-                console.log('Dashboard auto-refresh is disabled.');
-            }
-        } catch (error) {
-            console.error("Could not load settings for auto-refresh, using default.", error);
-            if (refreshIntervalId) clearInterval(refreshIntervalId);
-            refreshIntervalId = setInterval(loadInitialData, 60000); // Default a 60s
-        }
-    }
-    
-    initializeDashboard();
+    // --- INICIALIZACIÓN ---
+    loadInitialData(); // 1. Carga inmediata al entrar
+
+    // 2. ESCUCHA REACTIVA (Reemplazo del Polling)
+    // Cuando el Monitor avisa por WebSocket (ws-client.js), actualizamos.
+    window.addEventListener('data-refresh-needed', () => {
+        console.log("⚡ Dashboard: Actualizando datos por evento en vivo...");
+        loadInitialData();
+    });
 });

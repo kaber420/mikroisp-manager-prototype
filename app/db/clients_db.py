@@ -4,7 +4,6 @@ from typing import List, Dict, Any, Optional
 from .base import get_db_connection
 
 def get_all_clients_with_cpe_count() -> List[Dict[str, Any]]:
-    """Obtiene todos los clientes con su conteo de CPEs asociados."""
     conn = get_db_connection()
     query = """
         SELECT c.*, COUNT(p.mac) as cpe_count
@@ -19,10 +18,6 @@ def get_all_clients_with_cpe_count() -> List[Dict[str, Any]]:
     return rows
 
 def get_client_by_id(client_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Obtiene un cliente específico por su ID.
-    Esencial para verificar el estado actual antes de reactivar.
-    """
     conn = get_db_connection()
     cursor = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
     row = cursor.fetchone()
@@ -30,7 +25,6 @@ def get_client_by_id(client_id: int) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 def create_client(client_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Crea un nuevo cliente en la base de datos y lo devuelve."""
     conn = get_db_connection()
     try:
         cursor = conn.execute(
@@ -57,7 +51,6 @@ def create_client(client_data: Dict[str, Any]) -> Dict[str, Any]:
         conn.close()
 
 def update_client(client_id: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Actualiza un cliente y devuelve sus datos actualizados."""
     conn = get_db_connection()
     set_clause = ", ".join([f"{key} = ?" for key in updates.keys()])
     values = list(updates.values())
@@ -78,12 +71,9 @@ def update_client(client_id: int, updates: Dict[str, Any]) -> Optional[Dict[str,
     return dict(updated_client_row)
 
 def delete_client(client_id: int) -> int:
-    """Elimina un cliente y desasigna sus CPEs. Devuelve el número de filas eliminadas."""
     conn = get_db_connection()
     try:
-        # Primero desasignar CPEs
         conn.execute("UPDATE cpes SET client_id = NULL WHERE client_id = ?", (client_id,))
-        # Luego eliminar el cliente (los servicios se borran en cascada gracias a la DB)
         cursor = conn.execute("DELETE FROM clients WHERE id = ?", (client_id,))
         conn.commit()
         return cursor.rowcount
@@ -96,7 +86,8 @@ def delete_client(client_id: int) -> int:
 def get_cpes_for_client(client_id: int) -> List[Dict[str, Any]]:
     """Obtiene los CPEs asignados a un cliente específico."""
     conn = get_db_connection()
-    cursor = conn.execute("SELECT mac, hostname FROM cpes WHERE client_id = ?", (client_id,))
+    # --- CORRECCIÓN: Agregado 'ip_address' al SELECT ---
+    cursor = conn.execute("SELECT mac, hostname, ip_address FROM cpes WHERE client_id = ?", (client_id,))
     rows = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return rows
@@ -104,7 +95,6 @@ def get_cpes_for_client(client_id: int) -> List[Dict[str, Any]]:
 # --- Funciones de Servicios ---
 
 def get_client_service_by_id(service_id: int) -> Optional[Dict[str, Any]]:
-    """Obtiene un servicio específico por su ID."""
     conn = get_db_connection()
     cursor = conn.execute("SELECT * FROM client_services WHERE id = ?", (service_id,))
     row = cursor.fetchone()
@@ -112,7 +102,6 @@ def get_client_service_by_id(service_id: int) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 def get_services_for_client(client_id: int) -> List[Dict[str, Any]]:
-    """Obtiene todos los servicios asociados a un ID de cliente."""
     conn = get_db_connection()
     cursor = conn.execute("SELECT * FROM client_services WHERE client_id = ? ORDER BY created_at DESC", (client_id,))
     rows = [dict(row) for row in cursor.fetchall()]
@@ -123,13 +112,15 @@ def create_client_service(client_id: int, data: Dict[str, Any]) -> Dict[str, Any
     """Inserta un nuevo registro de servicio en la base de datos."""
     conn = get_db_connection()
     try:
+        # --- CORRECCIÓN: Agregados campos 'plan_id' e 'ip_address' al INSERT ---
         cursor = conn.execute(
             """INSERT INTO client_services (client_id, router_host, service_type, pppoe_username, 
-                                       router_secret_id, profile_name, suspension_method)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                                       router_secret_id, profile_name, suspension_method, plan_id, ip_address)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 client_id, data['router_host'], data['service_type'], data.get('pppoe_username'),
-                data.get('router_secret_id'), data.get('profile_name'), data['suspension_method']
+                data.get('router_secret_id'), data.get('profile_name'), data['suspension_method'],
+                data.get('plan_id'), data.get('ip_address') # Nuevos campos
             )
         )
         new_service_id = cursor.lastrowid
@@ -146,7 +137,6 @@ def create_client_service(client_id: int, data: Dict[str, Any]) -> Dict[str, Any
     return new_service
 
 def get_active_clients_by_billing_day(day: int) -> List[Dict[str, Any]]:
-    """Obtiene clientes 'activos' con un día de facturación específico."""
     conn = get_db_connection()
     cursor = conn.execute(
         "SELECT id, name FROM clients WHERE service_status = 'active' AND billing_day = ?",
